@@ -9,6 +9,7 @@ Created on Wed May 15 12:40:38 2019
 import numpy as np
 import sympy as sp
 import dReal_communication_Windows as dReal
+import cma
 
 #import matplotlib.pyplot as plt
 #from sympy.plotting import plot as splt
@@ -31,25 +32,51 @@ class Solution:
     Methods:
         none
     """
+    #TODO: variable in the entities that it can has: LF, controller, auxillary functions
     def __init__(self,S):
         
-        if isinstance(S,RWS):   #Check if it is a RWS spec. TODO replace with e.g. a dictionary to switch modes 
+        if isinstance(S,RWS):   #Check if it is a RWS spec. 
+        #TODO replace with e.g. a dictionary to switch modes 
             #HARDCODED CONTROLLER AND CLBF
-            x1, x2 = S.var
-            self.k_sym = sp.Array([-1*x1-2*x2])
-            self.V_sym = x1**2+x2**2+x1*x2-78
+            self.S = S
+            self.par = [-1,-2,-78]
+            self.par_len = len(self.par)
+            self.p = sp.symbols('p0:{}'.format(self.par_len))
+            p = self.p
+            x = S.var
+            self.k_sym_p = sp.Array([p[0]*x[0]+p[1]*x[1]])
+            self.V_sym_p = x[0]**2+x[1]**2+x[0]*x[1]+p[2]
             
-            ##TODO:make dependent on active mode
+            self.k_sym = None
+            self.V_sym = None
+            self.k_fun = None
+            self.V_fun = None
+            self.dV_sym = None
+            self.dVfun = None
+            self.dtV_sym = None
             
-            #Make a Controller and LBF function
-            self.k_fun = sp.lambdify([S.var],self.k_sym,"numpy")
-            self.V_fun =  sp.lambdify([S.var],self.V_sym,"numpy")
-    
-            #Compute the derivatives and make into functions
-            self.dV_sym = sp.diff(self.V_sym,[S.var])
-            self.dV_fun =  sp.lambdify([S.var],self.dV_sym,"numpy")
-            self.dtV_sym = sp.Matrix(self.dV_sym).dot(S.f_sym).subs(zip(S.input,self.k_sym))
+            
+            #substitute the parameter vector and create the functions
+            self.substitute_parameters(self.par)
+            
+            #TODO: Remove spec specific data from the solution.
+
+    def substitute_parameters(self,z):
+        self.par = z
+        self.k_sym = self.k_sym_p.subs([(self.p[i],self.par[i]) for i in range(self.par_len)])
+        self.V_sym = self.V_sym_p.subs([(self.p[i],self.par[i]) for i in range(self.par_len)])
+        self.make_functions()
         
+    def make_functions(self):    
+         #Make a Controller and LBF function
+        self.k_fun = sp.lambdify([self.S.var],self.k_sym,"numpy")
+        self.V_fun =  sp.lambdify([self.S.var],self.V_sym,"numpy")
+
+        #Compute the derivatives and make into functions
+        self.dV_sym = sp.diff(self.V_sym,[self.S.var])
+        self.dV_fun =  sp.lambdify([self.S.var],self.dV_sym,"numpy")
+        self.dtV_sym = sp.Matrix(self.dV_sym).dot(self.S.f_sym).subs(zip(self.S.input,self.k_sym))
+               
 
 class Spec:
     """ Base class of a specification.
@@ -79,9 +106,15 @@ class Spec:
     #constructor
     def __init__(self,variables,inputs,f_sym,options):
         """Constructor"""
+        
+        self._number_conditions = 1 #number of conditions     
         self.var = variables
         self.input = inputs
         self.options = options
+        self.dprecision = self.options.get('dprecision',0.01) #Defaulit 0.01
+        self.numsamp = self.options.get('numsamp',100)  #Default: 100
+        self.max_samples = self.options.get('max_samp',1000) #Defaulit 0.01
+        self.epsilon = self.options.get('epsilon',0.1) #Robustness buffer for the sample-based filtness. Default 0.1
         
         #Make functions of the dynamics
         self.f_sym = f_sym
@@ -90,15 +123,25 @@ class Spec:
         self.n = len(self.var)
         self.m = len(self.input)
         
+        self.conditions =  None
+        self.condition_set = (True,)
+        self.verification_result = [None]*self._number_conditions
+        
         self.rng = np.random.default_rng() #Initialize random generator
 
-    def sample_set(self,setList,numsamp):
+    def sample_set(self,setList,numsamp =None):
+        #If there is no argument of numpsamp, use atribute
+        if numsamp is None:
+            numsamp = self.numsamp
         Array = np.array(setList)
         samples = (Array[:,1]-Array[:,0])*self.rng.random((numsamp,self.n))+Array[:,0]
         return samples
  
-    def sample_set_complement(self,OuterList,InnerList,numsamp):
+    def sample_set_complement(self,OuterList,InnerList,numsamp = None):
         """ Sample a set of the form Outer\Inner"""
+        #If there is no argument of numpsamp, use atribute
+        if numsamp is None:
+            numsamp = self.numsamp
         OutArray = np.array(OuterList)
         InArray = np.array(InnerList)
         samples = (OutArray[:,1]-OutArray[:,0])*self.rng.random((numsamp,self.n))+OutArray[:,0]
@@ -115,6 +158,39 @@ class Spec:
             else:
                 samples[i,sdim] = InArray[sdim,0]-perc[i]*( OutArray[sdim,0]- InArray[sdim,0])
         return samples
+    
+    
+    def parameter_fitness(self,x,solution):
+        """Given a parameter vector x, compute the fitness """
+        solution.substitute_parameters(x) #Substitute parameters
+        return -1*self.sample_fitness(solution)
+    
+    def sample_fitness(self,solution):        
+        return 1.0
+    
+    #TODO: implement SMT fitness
+    # def SMT_fitness(self,solution):
+    #     self.verify(solution)
+    #     self.verification_result
+        
+    
+    def create_conditions(self,solution):     
+        self.conditions = (True,)
+
+    
+    def verify(self,solution):
+        #Create the conditions to verify
+        self.create_conditions(solution)   
+        #For each condition, verify the condition with dReal
+        for i in range(0,self._number_conditions):
+            self.verification_result[i]=dReal.dReal_verify(self.conditions[i],self.condition_set[i],self.var,self.dprecision,self.options['path'],"con{}".format(i+1))
+            #If there is a counter example, sample the data and append.
+            if isinstance(self.verification_result[i]['violation'],tuple):
+                self.data_sets[i] =np.append(self.data_sets[i],[self.verification_result[i]['violation']],axis =0)
+                #Saturate w.r.t. the maximum number of samples. (FIFO)
+                if len(self.data_sets[i]) > self.max_samples:
+                    self.data_sets[i] = self.data_sets[i][-self.max_samples:]
+    
  
 class RWS(Spec):
     """Represents the RWS specification and implements the corresponding fitness function and verification.
@@ -144,10 +220,11 @@ class RWS(Spec):
         #Call the __init__ function of the Spec parent class first.
         Spec.__init__(self,variables,inputs,f_sym,options)
         
+        self._number_conditions = 3 #number of RWS conditions
+        
         Slist = self.options['Slist']
         Ilist = self.options['Ilist']
         Olist = self.options['Olist']
-        numsamp = self.options.get('numsamp',100)  #Default: 100
         self.c = self.options.get('c',0.01)  #arbitrary small constant. Default 0.01
         self.gamma = self.options.get('gamma',0.01)  #decrease of the LBF. Default 0.01
         
@@ -156,10 +233,11 @@ class RWS(Spec):
         Rlist = [[Slist[i][0]-rdelta,Slist[i][1]+rdelta] for i in range(0,self.n)]
         
         #Create sample sets
-        self.Idata = self.sample_set(Ilist,numsamp)
-        self.dSdata = self.sample_set_complement(Rlist, Slist, numsamp)
-        self.SnOdata = self.sample_set_complement(Slist, Olist,numsamp)
-     
+        Idata = self.sample_set(Ilist)
+        dSdata = self.sample_set_complement(Rlist, Slist)
+        SnOdata = self.sample_set_complement(Slist, Olist)
+        self.data_sets = [Idata,dSdata,SnOdata]
+            
         #Create symbolic domains for SMT solver
         Sset =sp.And()
         Rset = sp.And()
@@ -174,24 +252,26 @@ class RWS(Spec):
             Rset = sp.And(Rset,sp.And(self.var[i]>= Rlist[i][0],self.var[i]<=Rlist[i][1]))
             Sopenset = sp.And(Sset,sp.And(self.var[i]> Slist[i][0],self.var[i]<Slist[i][1]))
             clRnSset = sp.And(Rset,sp.Not(Sopenset))
-        self.con1set =  Iset
-        self.con2set = clRnSset
-        self.con3set = SnOset
+
+        self.condition_set = (Iset,clRnSset,SnOset) 
+        self.conditions = None
+        self.verification_result = [None]*self._number_conditions
     
     #Define the fitness function for RWS
     def sample_fitness(self,solution):
         #Define pointwise functions for each LBF condition
         def fit1(x):
-            return np.minimum(-solution.V_fun(x),0.0)
+            return np.minimum(-solution.V_fun(x)-self.epsilon,0.0)
         def fit2(x):
-            return np.minimum(solution.V_fun(x)-self.c,0.0)
+            return np.minimum(solution.V_fun(x)-self.c-self.epsilon,0.0)
         def fit3(x):
             dtV =np.dot(solution.dV_fun(x),self.f_fun(x,solution.k_fun(x)))[0]
-            return np.minimum(np.maximum(solution.V_fun(x)-self.c,-dtV-self.gamma),0.0)
+            return np.minimum(np.maximum(solution.V_fun(x)-self.c+self.epsilon,-dtV-self.gamma-self.epsilon),0.0)
         
-        fit1_data = np.array([fit1(point) for point in self.Idata])
-        fit2_data = np.array([fit2(point) for point in self.dSdata])
-        fit3_data = np.array([fit3(point) for point in self.SnOdata])
+        #TODO: optimize
+        fit1_data = np.array([fit1(point) for point in self.data_sets[0]])
+        fit2_data = np.array([fit2(point) for point in self.data_sets[1]])
+        fit3_data = np.array([fit3(point) for point in self.data_sets[2]])
         
         fit1_val = 1/(1+np.linalg.norm(fit1_data))
         fit2_val = 1/(1+np.linalg.norm(fit2_data))
@@ -202,32 +282,22 @@ class RWS(Spec):
         
         return (fit1_val + w2*fit2_val + w3*fit3_val)/3
         
-    def verify(self,solution):     
-        # call dReal
-        path = self.options['path']
-        dprecision = self.options.get('dprecision',0.01) #Defaulit 0.01
-        
+    def create_conditions(self,solution):     
+
         #create the conditions to verify
         con1 = solution.V_sym <= 0
         con2 = solution.V_sym > 0
         con3 = sp.Or(solution.V_sym >0, solution.dtV_sym <= -self.gamma)
-
-        #TODO: clean up the result
-        result1 =dReal.dReal_verify(con1,self.con1set,self.var,dprecision,path,'con1')
-        result2 =dReal.dReal_verify(con2,self.con2set,self.var,dprecision,path,'con2')
-        result3 =dReal.dReal_verify(con3,self.con3set,self.var,dprecision,path,'con3')
         
-        #ToDo: extract counter examples and append to set
-       
+        self.conditions = (con1, con2, con3)
+
   
 ### DEMO ################
         
 def demo():
-    
-    #Variable Declaration
     var_list = x1,x2= sp.symbols('x1,x2')
     input_list = u1, =sp.symbols('u1,') 
-  
+      
     #Dynamics
     f_sym =  sp.Matrix([x2,u1])  #Column vector
     
@@ -241,21 +311,27 @@ def demo():
     options = {'Slist':Slist,   #Interval list of the safe set
                'Ilist':Ilist,   #Interval list of the initial set
                'Olist':Olist,   #Interval list of the goal set
-               'numsamp':100,  #Number of samples
+               'numsamp':100,  #Number of (initial) samples
+               'max_samp': 300, #Maximum number of samples (when adding violations)
                'rdelta':0.01,   #Inflation of the boundary
                'gamma':0.01,    #(arbitrary) decrease of the LF
                'c':0.01,        #(arbitrary) nonnegative parameter (see manual)
                'path': path,
+               'epsilon':0.1,  #Robustness buffer for the sample-based fitness
                'dprecision': 0.01}    #Path where the SMT files will be stored
     
     #Initialize specification
-    S = RWS(var_list,input_list,f_sym,options)
+    spec = RWS(var_list,input_list,f_sym,options)
     #Create an (hardcoded) individual
-    ind = Solution(S)
-
-    fitness = S.sample_fitness(ind)
-    print(fitness)
-    #verify
-    S.verify(ind)
+    ind = Solution(spec)
     
+    #Give the individual arbitrary new parameters for testing
+    ind.par = [1,1,1]
+    ind.substitute_parameters(ind.par)
+    
+    sigma0 = 0.5
+    cma.fmin(spec.parameter_fitness,ind.par,sigma0,args={ind,},options = {'verbose':-9})
+    spec.verify(ind)
+        
+  
 demo()

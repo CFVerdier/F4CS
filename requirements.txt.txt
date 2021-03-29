@@ -1,0 +1,6 @@
+numpy
+sympy
+cma
+os
+collections
+subprocess

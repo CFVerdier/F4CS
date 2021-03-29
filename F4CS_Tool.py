@@ -55,9 +55,13 @@ class Solution:
             self.dVfun = None
             self.dtV_sym = None
             
+            #TODO: store these values automatically
+            self.sample_fitness = 0
+            self.fitness = 0
             
             #substitute the parameter vector and create the functions
             self.substitute_parameters(self.par)
+
             
             #TODO: Remove spec specific data from the solution.
 
@@ -68,7 +72,7 @@ class Solution:
         self.make_functions()
         
     def make_functions(self):    
-         #Make a Controller and LBF function
+        #Make a Controller and LBF function
         self.k_fun = sp.lambdify([self.S.var],self.k_sym,"numpy")
         self.V_fun =  sp.lambdify([self.S.var],self.V_sym,"numpy")
 
@@ -168,16 +172,19 @@ class Spec:
     def sample_fitness(self,solution):        
         return 1.0
     
-    #TODO: implement SMT fitness
-    # def SMT_fitness(self,solution):
-    #     self.verify(solution)
-    #     self.verification_result
-        
+    def SMT_fitness(self,solution):
+        #Call SMT solver to verify the conditions.
+        self.verify(solution)
+        #Total SMT fitness is equal to the number of true statements, normalized to number of conditions
+        return (np.sum([int(n['sat']) for n in self.verification_result]))/self._number_conditions
     
+    #TODO: if we store the sample fitness of a candidate after parameter optimization
+    def fitness(self,solution):
+        return (self.sample_fitness(solution)+self.SMT_fitness(solution))/2
+          
     def create_conditions(self,solution):     
         self.conditions = (True,)
 
-    
     def verify(self,solution):
         #Create the conditions to verify
         self.create_conditions(solution)   
@@ -291,7 +298,46 @@ class RWS(Spec):
         
         self.conditions = (con1, con2, con3)
 
-  
+class Synthesis:
+    """ Synthesizes a controller and certificate function for a given specification
+    
+    Constructor arguments:
+        specification (spec): specification
+        options: dictionary with the desired specifications.
+        
+    Optimal arguments:
+        TODO
+        
+    Attributes:
+        TODO
+    
+    Methods:
+        TODO
+    """
+    #TODO: variable in the entities that it can has: LF, controller, auxillary functions
+    def __init__(self,specification,options):
+        self.method = self.options.get('Method','Template')
+        self.spec = specification
+        
+        
+class TBS(Synthesis):
+    """Template based controller and certificate function synthesis. Subclass of synthesis
+    
+        Constructor arguments:
+        specification (spec): specification
+        options: dictionary with the desired specifications.
+        
+    Optimal arguments:
+        TODO
+        
+    Attributes:
+        TODO
+    
+    Methods:
+        TODO
+    
+    """
+
 ### DEMO ################
         
 def demo():
@@ -334,4 +380,53 @@ def demo():
     spec.verify(ind)
         
   
-demo()
+#demo()
+
+
+## debug
+
+var_list = x1,x2= sp.symbols('x1,x2')
+input_list = u1, =sp.symbols('u1,') 
+  
+#Dynamics
+f_sym =  sp.Matrix([x2,u1])  #Column vector
+
+Slist = [[-15,15],[-15,15]]
+Ilist = [[-5,5],[-5,5]]
+Olist = [[-1,1],[-1,1]]
+
+#path where the SMT files will be stored
+path = 'e:/docker_connect/data'
+
+options = {'Slist':Slist,   #Interval list of the safe set
+           'Ilist':Ilist,   #Interval list of the initial set
+           'Olist':Olist,   #Interval list of the goal set
+           'numsamp':100,  #Number of (initial) samples
+           'max_samp': 300, #Maximum number of samples (when adding violations)
+           'rdelta':0.01,   #Inflation of the boundary
+           'gamma':0.01,    #(arbitrary) decrease of the LF
+           'c':0.01,        #(arbitrary) nonnegative parameter (see manual)
+           'path': path,
+           'epsilon':0.1,  #Robustness buffer for the sample-based fitness
+           'dprecision': 0.01}    #Path where the SMT files will be stored
+
+#Initialize specification
+spec = RWS(var_list,input_list,f_sym,options)
+#Create an (hardcoded) individual
+ind = Solution(spec)
+
+#Give the individual arbitrary new parameters for testing
+ind.par = [1,1,1]
+ind.substitute_parameters(ind.par)
+
+sigma0 = 0.5
+cma.fmin(spec.parameter_fitness,ind.par,sigma0,args={ind,},options = {'verbose':1,'seed': 1})
+#spec.verify(ind)
+
+## Timing experiment 
+import timeit
+ind.par = [1,1,1]
+ind.substitute_parameters(ind.par)
+
+time = timeit.timeit('cma.fmin(spec.parameter_fitness,ind.par,sigma0,args={ind,},options = {"verbose":-9,"seed": 1})','from __main__ import spec, ind, sigma0, cma',number =10)
+print(time)

@@ -9,6 +9,7 @@ import numpy as np
 import sympy as sp
 import verification.dReal_communication as dReal
 
+# TODO: initalize with [0]*n creates a n times a copy. This can create odd effects
 
 class Spec:
     """Base class of a specification.
@@ -65,12 +66,14 @@ class Spec:
 
         self.conditions = None
         self.condition_set = (True,)
+        # TODO: this list containts n copies! change
         self.verification_result = [
             {"sat": False, "violation": [0] * self.n}
         ] * self._number_conditions
 
         self.rng = np.random.default_rng()  # Initialize random generator
 
+        # TODO: this list containts n copies! change
         self.data_sets = [
             np.array([[0] * self.n] * self.number_samples)
         ] * self._number_conditions
@@ -263,6 +266,7 @@ class RWS(Spec):
 
         self.condition_set = (I_set, closed_R_not_S_set, S_not_O_set)
         self.conditions = None
+        # TODO: this list containts n copies! change
         self.verification_result = [None] * self._number_conditions
 
     # Define the fitness function for RWS

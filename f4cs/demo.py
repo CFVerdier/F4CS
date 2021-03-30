@@ -8,25 +8,26 @@ import sympy as sp
 from specifications import RWS
 from candidates import Solution
 import cma
-#import timeit
+
+# import timeit
 
 var_list = x1, x2 = sp.symbols('x1,x2')
 input_list = u1, = sp.symbols('u1,')
 
-#Dynamics
+# Dynamics
 f_sym = sp.Matrix([x2, u1])  # Column vector
 
 Slist = [[-15, 15], [-15, 15]]
 Ilist = [[-5, 5], [-5, 5]]
 Olist = [[-1, 1], [-1, 1]]
 
-#path where the SMT files will be stored
+# path where the SMT files will be stored
 path = 'e:/docker_connect/data'
 
 options = {'Slist': Slist,  # Interval list of the safe set
            'Ilist': Ilist,  # Interval list of the initial set
            'Olist': Olist,  # Interval list of the goal set
-           'numsamp': 100,  # Number of (initial) samples
+           'number_samples': 100,  # Number of (initial) samples
            # Maximum number of samples (when adding violations)
            'max_samp': 300,
            'rdelta': 0.01,  # Inflation of the boundary
@@ -36,12 +37,12 @@ options = {'Slist': Slist,  # Interval list of the safe set
            'epsilon': 0.1,  # Robustness buffer for the sample-based fitness
            'dprecision': 0.01}  # Path where the SMT files will be stored
 
-#Initialize specification
+# Initialize specification
 spec = RWS(var_list, input_list, f_sym, options)
-#Create an (hardcoded) individual
+# Create an (hardcoded) individual
 ind = Solution(spec)
 
-#Give the individual arbitrary new parameters for testing
+# Give the individual arbitrary new parameters for testing
 ind.par = [1, 1, 1]
 ind.substitute_parameters(ind.par)
 

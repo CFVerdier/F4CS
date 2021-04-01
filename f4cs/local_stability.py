@@ -10,6 +10,7 @@ import sympy as sp
 from specifications import Spec
 import pyibex
 
+#TODO: update to new specification format
 
 class LocalStability(Spec):
     """Local stability specification.
@@ -46,31 +47,6 @@ class LocalStability(Spec):
         self.condition_set = (D_set, D_set)
         self.conditions = None
         self.verification_result = [None] * self._number_conditions
-
-    # Define the fitness function for RWS
-    def sample_fitness(self, solution):
-        """Compute the sample-based fitness."""
-        # Define pointwise functions for each LBF condition
-        def fit1(x):
-            return np.minimum(solution.V_fun(x) - self.positive_definite, 0.0)
-
-        def fit2(x):
-            dtV = np.dot(solution.dV_fun(
-                x), self.f_fun(x, solution.k_fun(x)))[0]
-            return np.minimum(
-                -dtV - self.gamma*solution.V_fun(x),
-                0.0)
-
-        # TODO: optimize
-        fit1_data = np.array([fit1(point) for point in self.data_sets[0]])
-        fit2_data = np.array([fit2(point) for point in self.data_sets[1]])
-
-        fit1_val = 1 / (1 + np.linalg.norm(fit1_data))
-        fit2_val = 1 / (1 + np.linalg.norm(fit2_data))
-
-        w2 = np.floor(fit1_val)
-
-        return (fit1_val + w2 * fit2_val) / self._number_conditions
 
     def create_conditions(self, solution):
         """Create the conditions to be verified with an SMT solver."""

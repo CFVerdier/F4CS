@@ -48,11 +48,14 @@ spec = RWS(var_list, input_list, f_sym, options)
 ind = Solution(spec)
 
 # Give the individual arbitrary new parameters for testing
-ind.par = [1, 1, 1]
-ind.substitute_parameters(ind.par)
+# ind.par = [1, 1, 1]
+# ind.substitute_parameters(ind.par)
 
 sigma0 = 0.5
+spec.create_conditions(ind)
+spec.create_fitness(ind)
 cma.fmin(spec.parameter_fitness, ind.par, sigma0,
          args={ind, }, options={'verbose': -1})
-spec.verify(ind)
-print(spec.verification_result)
+# TODO: subsitution of parameters broken.
+# spec.verify(ind)
+#print(spec.verification_result)

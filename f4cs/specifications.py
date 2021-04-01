@@ -12,6 +12,7 @@ import verification
 
 # TODO: initalize with [0]*n creates a n times a copy. This can create odd
 # effects
+# TODO: create symbolic fitness with parameters not substituted in.
 
 
 class Spec:
@@ -80,6 +81,7 @@ class Spec:
 
         self.conditions = None
         self.condition_set = (True,)
+
         # TODO: this list containts n copies! change
         self.verification_result = [
             {"sat": False, "violation": [0] * self.n}
@@ -132,7 +134,7 @@ class Spec:
                 )
         return samples
 
-    def create_fitness(self):
+    def create_fitness(self, solution):
         """Create a symbolic fitness function given a symbolic condition."""
         result = ()
         for condition in self.conditions:
@@ -155,7 +157,7 @@ class Spec:
             # Saturate minimal error
             f = sp.Min(f, 0.0)
             # Concatinate to result tuple
-            function = sp.lambdify([self.var], f, "numpy")
+            function = sp.lambdify([solution.p, self.var], f, "numpy")
             result = result + (function,)
         self.fitness = result
 
@@ -172,10 +174,7 @@ class Spec:
 
     def sample_fitness(self, solution):
         """Compute the sample-based fitness."""
-        self.create_conditions(solution)
-        self.create_fitness()
-
-        fit_data = [np.array([self.fitness[i](point)
+        fit_data = [np.array([self.fitness[i](solution.par, point)
                              for point in self.data_sets[i]])
                     for i in range(self._number_conditions)]
         norm_fit_data = np.array(
@@ -186,7 +185,9 @@ class Spec:
 
     def parameter_fitness(self, parameter, solution):
         """Given a parameter vector, compute the sample-based fitness."""
-        solution.substitute_parameters(parameter)  # Substitute parameters
+        # solution.substitute_parameters(parameter)
+        # Substitute parameters
+        solution.par = parameter
         return -1 * self.sample_fitness(solution)
 
     def SMT_fitness(self, solution):

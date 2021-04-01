@@ -66,15 +66,19 @@ class Solution:
             [(self.p[i], self.par[i]) for i in range(self.par_len)])
         self.V_sym = self.V_sym_p.subs(
             [(self.p[i], self.par[i]) for i in range(self.par_len)])
-        self.make_functions()
-
-    def make_functions(self):
-        # Make a Controller and LBF function
-        self.k_fun = sp.lambdify([self.S.var], self.k_sym, "numpy")
-        self.V_fun = sp.lambdify([self.S.var], self.V_sym, "numpy")
-
-        # Compute the derivatives and make into functions
         self.dV_sym = sp.diff(self.V_sym, [self.S.var])
-        self.dV_fun = sp.lambdify([self.S.var], self.dV_sym, "numpy")
         self.dtV_sym = sp.Matrix(self.dV_sym).dot(
             self.S.f_sym).subs(zip(self.S.input, self.k_sym))
+
+        #self.make_functions()
+
+    # def make_functions(self):
+    #     # Make a Controller and LBF function
+    #     self.k_fun = sp.lambdify([self.S.var], self.k_sym, "numpy")
+    #     self.V_fun = sp.lambdify([self.S.var], self.V_sym, "numpy")
+
+    #     # Compute the derivatives and make into functions
+    #     self.dV_sym = sp.diff(self.V_sym, [self.S.var])
+    #     self.dV_fun = sp.lambdify([self.S.var], self.dV_sym, "numpy")
+    #     self.dtV_sym = sp.Matrix(self.dV_sym).dot(
+    #         self.S.f_sym).subs(zip(self.S.input, self.k_sym))

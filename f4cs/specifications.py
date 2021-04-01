@@ -58,7 +58,10 @@ class Spec:
         self.dprecision = self.options.get("dprecision", 0.01)
         self.number_samples = self.options.get("number_samples", 100)
         self.max_samples = self.options.get("max_samp", 1000)
+        # Robustness buffer
         self.epsilon = self.options.get("epsilon", 0.1)
+        # Arbitrary small constant. Default 0.01
+        self.c = self.options.get("c", 0.01)
         self.smt_options = self.options.get("smt_options",
                                             {"solver": 'dReal'})
 
@@ -129,14 +132,62 @@ class Spec:
                 )
         return samples
 
+    def create_fitness(self):
+        """Create a symbolic fitness function given a symbolic condition."""
+        result = ()
+        for condition in self.conditions:
+            # Copy condition
+            f = condition
+            # Replace Or and And to prevent TypeError during the transformation
+            f = f.replace(sp.Or, sp.Function('dummy_or'))
+            f = f.replace(sp.And, sp.Function('dummy_and'))
+            # Write to standard form.
+            f = f.replace(sp.StrictGreaterThan, lambda x, y: x >= y + self.c)
+            f = f.replace(sp.StrictLessThan, lambda x, y: x <= y - self.c)
+            f = f.replace(sp.LessThan, lambda x, y: -x >= -y)
+            f = f.replace(sp.GreaterThan, lambda x, y: x-y)
+            # Replace booleans
+            f = f.replace(True, 0.0)
+            f = f.replace(False, -np.inf)
+            # Replace Or and And
+            f = f.replace(sp.Function('dummy_or'), sp.Max)
+            f = f.replace(sp.Function('dummy_and'), sp.Min)
+            # Saturate minimal error
+            f = sp.Min(f, 0.0)
+            # Concatinate to result tuple
+            function = sp.lambdify([self.var], f, "numpy")
+            result = result + (function,)
+        self.fitness = result
+
+    def fitness_weights(self, data):
+        """Create the fitness weights."""
+        weights = np.array([1])
+        for i in range(1, self._number_conditions):
+            weights = np.append(weights, np.floor(weights[i-1] * data[i-1]))
+        return weights
+
+    def normalized_fitness(self, data):
+        """Create normalized fitness."""
+        return 1 / (1 + np.linalg.norm(data))
+
+    def sample_fitness(self, solution):
+        """Compute the sample-based fitness."""
+        self.create_conditions(solution)
+        self.create_fitness()
+
+        fit_data = [np.array([self.fitness[i](point)
+                             for point in self.data_sets[i]])
+                    for i in range(self._number_conditions)]
+        norm_fit_data = np.array(
+            [self.normalized_fitness(data) for data in fit_data])
+        weights = self.fitness_weights(norm_fit_data)
+
+        return np.sum(weights*norm_fit_data)/self._number_conditions
+
     def parameter_fitness(self, parameter, solution):
         """Given a parameter vector, compute the sample-based fitness."""
         solution.substitute_parameters(parameter)  # Substitute parameters
         return -1 * self.sample_fitness(solution)
-
-    def sample_fitness(self, solution):
-        """Compute the sample-based fitness."""
-        return 1.0
 
     def SMT_fitness(self, solution):
         """Compute the SMT-based fitness."""
@@ -228,8 +279,6 @@ class RWS(Spec):
         S_list = self.options["Slist"]
         I_list = self.options["Ilist"]
         O_list = self.options["Olist"]
-        # arbitrary small constant. Default 0.01
-        self.c = self.options.get("c", 0.01)
         # decrease of the LBF. Default 0.01
         self.gamma = self.options.get("gamma", 0.01)
 
@@ -281,41 +330,6 @@ class RWS(Spec):
         # TODO: this list containts n copies! change
         self.verification_result = [None] * self._number_conditions
 
-    # Define the fitness function for RWS
-    def sample_fitness(self, solution):
-        """Compute the sample-based fitness."""
-        # Define pointwise functions for each LBF condition
-        def fit1(x):
-            return np.minimum(-solution.V_fun(x) - self.epsilon, 0.0)
-
-        def fit2(x):
-            return np.minimum(solution.V_fun(x) - self.c - self.epsilon, 0.0)
-
-        def fit3(x):
-            dtV = np.dot(solution.dV_fun(
-                x), self.f_fun(x, solution.k_fun(x)))[0]
-            return np.minimum(
-                np.maximum(
-                    solution.V_fun(x) - self.c + self.epsilon,
-                    -dtV - self.gamma - self.epsilon,
-                ),
-                0.0,
-            )
-
-        # TODO: optimize
-        fit1_data = np.array([fit1(point) for point in self.data_sets[0]])
-        fit2_data = np.array([fit2(point) for point in self.data_sets[1]])
-        fit3_data = np.array([fit3(point) for point in self.data_sets[2]])
-
-        fit1_val = 1 / (1 + np.linalg.norm(fit1_data))
-        fit2_val = 1 / (1 + np.linalg.norm(fit2_data))
-        fit3_val = 1 / (1 + np.linalg.norm(fit3_data))
-
-        w2 = np.floor(fit1_val)
-        w3 = np.floor(w2 * fit2_val)
-
-        return (fit1_val + w2 * fit2_val + w3 * fit3_val) / 3
-
     def create_conditions(self, solution):
         """Create the conditions to be verified with an SMT solver."""
         # create the conditions to verify
@@ -324,3 +338,9 @@ class RWS(Spec):
         con3 = sp.Or(solution.V_sym > 0, solution.dtV_sym <= -self.gamma)
 
         self.conditions = (con1, con2, con3)
+
+
+# var_list = x1, x2 = sp.symbols('x1,x2')
+# input_list = u1, = sp.symbols('u1,')
+# f = sp.Or(x1+x2*u1 <= 2, x1 > 0)
+# c = 0.001

@@ -293,7 +293,7 @@ def demo():
     result = verifier.verify(F, dom, varlist)
     print(result)
 
-    return
+    return 1
 
 
 # demo()

@@ -239,17 +239,19 @@ class Z3(Verification):
         # Write SMT file
         string = self.make_SMT2_string(symbolic_expr,
                                        domain, symbol_list)
+        # Translate to Z3 API
         smt_parse = z3.parse_smt2_string(string)
         solver.add(smt_parse)
+        # Check condition
         flag = solver.check()
 
         result = {}
         if str(flag) == "sat":
-            # Create a list of z3 variables
-            # (required to extract the counter examples)
             model = solver.model()
             result['sat'] = False
+            # Create a list of z3 variables
             z3_symbols = [z3.Real(str(i)) for i in symbol_list]
+            # Extract counterexample from the obtained model
             result['violation'] = tuple([model[i].numerator_as_long(
             )/model[i].denominator_as_long() for i in z3_symbols])
         elif str(flag) == "unsat":

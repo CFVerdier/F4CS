@@ -25,10 +25,10 @@ Olist = [[-1, 1], [-1, 1]]
 path = 'e:/docker_connect/data'
 
 # Use Z3
-smt_options = {'solver': 'Z3'}
+# smt_options = {'solver': 'Z3'}
 
 # Use dReal
-# smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
+smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
 
 options = {'Slist': Slist,  # Interval list of the safe set
            'Ilist': Ilist,  # Interval list of the initial set
@@ -53,6 +53,6 @@ ind.substitute_parameters(ind.par)
 
 sigma0 = 0.5
 cma.fmin(spec.parameter_fitness, ind.par, sigma0,
-         args={ind, }, options={'verbose': -1})
+         args={ind, }, options={'verbose': -9})
 spec.verify(ind)
 print(spec.verification_result)

@@ -8,7 +8,9 @@ Created on Mon Mar 29 18:24:34 2021
 import sympy as sp
 from specifications import RWS
 
-#TODO use the class below for new individuals
+# TODO use the class below for new individuals
+
+
 class Solution:
     """ Stores and manipulates a candidate solution for RWS
 
@@ -24,13 +26,13 @@ class Solution:
     Methods:
         none
     """
-    #TODO: variable in the entities that it can has: LF, controller, auxillary functions
+    # TODO: variable in the entities that it can has: LF, controller, auxillary functions
 
     def __init__(self, S):
 
         if isinstance(S, RWS):  # Check if it is a RWS spec.
-            #TODO replace with e.g. a dictionary to switch modes
-            #HARDCODED CONTROLLER AND CLBF
+            # TODO replace with e.g. a dictionary to switch modes
+            # HARDCODED CONTROLLER AND CLBF
             self.S = S
             self.par = [-1, -2, -78]
             self.par_len = len(self.par)
@@ -48,15 +50,15 @@ class Solution:
             self.dVfun = None
             self.dtV_sym = None
 
-            #TODO: store these values automatically
+            # TODO: store these values automatically
             self.sample_fitness = 0
             self.fitness = 0
 
-            #substitute the parameter vector and create the functions
+            # substitute the parameter vector and create the functions
             self.substitute_parameters(self.par)
 
-            #TODO: use @property(?) for parameters?
-            #TODO: Remove spec specific data from the solution.
+            # TODO: use @property(?) for parameters?
+            # TODO: Remove spec specific data from the solution.
 
     def substitute_parameters(self, z):
         self.par = z
@@ -67,11 +69,11 @@ class Solution:
         self.make_functions()
 
     def make_functions(self):
-        #Make a Controller and LBF function
+        # Make a Controller and LBF function
         self.k_fun = sp.lambdify([self.S.var], self.k_sym, "numpy")
         self.V_fun = sp.lambdify([self.S.var], self.V_sym, "numpy")
 
-        #Compute the derivatives and make into functions
+        # Compute the derivatives and make into functions
         self.dV_sym = sp.diff(self.V_sym, [self.S.var])
         self.dV_fun = sp.lambdify([self.S.var], self.dV_sym, "numpy")
         self.dtV_sym = sp.Matrix(self.dV_sym).dot(

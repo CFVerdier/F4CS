@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 
-import sympy
 import numpy as np
 import collections
 import os.path
@@ -199,6 +198,8 @@ def dReal_verify(symbolic_expr, domain, symbol_list, dReal_precision,
 
 
 def demo():
+    """Demo how to use this module."""
+    import sympy
     """Demonstration how to use the module."""
     # Define path variables
     path = 'e:/docker_connect'

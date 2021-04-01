@@ -7,9 +7,12 @@ Created on Mon Mar 29 18:20:07 2021
 
 import numpy as np
 import sympy as sp
-import verification.dReal_communication as dReal
+import verification
+# import verification.dReal_communication as dReal
 
-# TODO: initalize with [0]*n creates a n times a copy. This can create odd effects
+# TODO: initalize with [0]*n creates a n times a copy. This can create odd
+# effects
+
 
 class Spec:
     """Base class of a specification.
@@ -56,6 +59,14 @@ class Spec:
         self.number_samples = self.options.get("number_samples", 100)
         self.max_samples = self.options.get("max_samp", 1000)
         self.epsilon = self.options.get("epsilon", 0.1)
+        self.smt_options = self.options.get("smt_options",
+                                            {"solver": 'dReal'})
+
+        # Select the SMT solver
+        smt_solver = self.smt_options.get("solver", 'dReal')
+        smt_dictionary = {'dReal': verification.Dreal,
+                          'Z3': verification.Z3}
+        self.verifier = smt_dictionary[smt_solver](self.smt_options)
 
         # Make functions of the dynamics
         self.f_sym = f_sym
@@ -153,13 +164,14 @@ class Spec:
         self.create_conditions(solution)
         # For each condition, verify the condition with dReal
         for i in range(0, self._number_conditions):
-            self.verification_result[i] = dReal.dReal_verify(
+            # TODO: clean up passing a file name. Now this is only relevant for
+            # dReal, but is passed for any SMT solver.
+            if hasattr(self.verifier, 'file_name'):
+                self.verifier.file_name = "con{}".format(i + 1)
+            self.verification_result[i] = self.verifier.verify(
                 self.conditions[i],
                 self.condition_set[i],
-                self.var,
-                self.dprecision,
-                self.options["path"],
-                "con{}".format(i + 1),
+                self.var
             )
             # If there is a counter example, sample the data and append.
             if isinstance(self.verification_result[i]["violation"], tuple):

@@ -24,6 +24,12 @@ Olist = [[-1, 1], [-1, 1]]
 # path where the SMT files will be stored
 path = 'e:/docker_connect/data'
 
+# Use Z3
+smt_options = {'solver': 'Z3'}
+
+# Use dReal
+# smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
+
 options = {'Slist': Slist,  # Interval list of the safe set
            'Ilist': Ilist,  # Interval list of the initial set
            'Olist': Olist,  # Interval list of the goal set
@@ -33,9 +39,8 @@ options = {'Slist': Slist,  # Interval list of the safe set
            'rdelta': 0.01,  # Inflation of the boundary
            'gamma': 0.01,  # (arbitrary) decrease of the LF
            'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
-           'path': path,
-           'epsilon': 0.1,  # Robustness buffer for the sample-based fitness
-           'dprecision': 0.01}  # Path where the SMT files will be stored
+           'smt_options': smt_options,
+           'epsilon': 0.1}  # Robustness buffer for the sample-based fitness
 
 # Initialize specification
 spec = RWS(var_list, input_list, f_sym, options)
@@ -48,5 +53,6 @@ ind.substitute_parameters(ind.par)
 
 sigma0 = 0.5
 cma.fmin(spec.parameter_fitness, ind.par, sigma0,
-         args={ind, }, options={'verbose': -9})
+         args={ind, }, options={'verbose': -1})
 spec.verify(ind)
+print(spec.verification_result)

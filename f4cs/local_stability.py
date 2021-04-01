@@ -111,7 +111,7 @@ result_list = [[0]*n for _ in range(n)]
 for i in range(0, n):
     for j in range(0, n):
         vec[i][j] = var_list[i]*var_list[j]
-        ddfij = sp.diff(sp.diff(f, var_list[i]), var_list[j])
+        ddfij = sp.diff(f, var_list[i], var_list[j])
         for k in range(0, n):
             # print(str(ddfij[k]))
             my_fun = pyibex.Function(*string_variables, str(ddfij[k]))
@@ -135,6 +135,13 @@ for element in flat_results:
 result = (0.5*result)
 result.simplify
 aux_list = tuple(aux_list)
+
+point = sp.zeros(2,1)
+
+# f_point = f.subs([(var_list[i], point[i]) for i in range(n)])
+# df_point = df.subs([(var_list[i], point[i]) for i in range(n)])
+
+# abstracted_f = f_sym(sp.zeros(2,1))
 
 print(str(aux_list) + ' in ' + str(aux_set_list))
 print(result)

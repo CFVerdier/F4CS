@@ -88,7 +88,6 @@ class Spec:
         self.n = len(self.var)
         self.m = len(self.input)
 
-        self.conditions = None
         self.condition_set = (True,)
 
         # TODO: this list containts n copies! change
@@ -143,35 +142,6 @@ class Spec:
                 )
         return samples
 
-    def create_fitness(self, solution):
-        """Create a symbolic fitness function given a symbolic condition."""
-        result = ()
-        for condition in self.conditions:
-            # Copy condition
-            f = condition
-            # Replace Or and And to prevent TypeError during the transformation
-            f = f.replace(sp.Or, sp.Function('dummy_or'))
-            f = f.replace(sp.And, sp.Function('dummy_and'))
-            # Write to standard form.
-            f = f.replace(sp.StrictGreaterThan, lambda x, y: x >= y + self.c)
-            f = f.replace(sp.StrictLessThan, lambda x, y: x <= y - self.c)
-            f = f.replace(sp.LessThan, lambda x, y: -x >= -y)
-            f = f.replace(sp.GreaterThan, lambda x, y: x-y)
-            # Replace booleans
-            f = f.replace(True, 0.0)
-            f = f.replace(False, -np.inf)
-            # Replace Or and And
-            f = f.replace(sp.Function('dummy_or'), sp.Max)
-            f = f.replace(sp.Function('dummy_and'), sp.Min)
-            # Saturate minimal error
-            f = sp.Min(f, 0.0)
-            # Concatinate to result tuple
-            function = sp.lambdify(
-                solution.p + self.var, f,
-                modules=[{'amax': custom_amax, 'amin': custom_amin}, "numpy"])
-            result = result + (function,)
-        self.fitness = result
-
     def fitness_weights(self, data):
         """Create the fitness weights."""
         weights = np.array([1])
@@ -187,12 +157,9 @@ class Spec:
         """Compute the sample-based fitness."""
         par = solution.par
 
-        fit_data = [self.fitness[i](*par, *self.data_sets[i].T)
+        fit_data = [solution.fitness[i](*par, *self.data_sets[i].T)
                     for i in range(self._number_conditions)]
 
-        # fit_data = [np.array([self.fitness[i](par, point)
-        #                      for point in self.data_sets[i]])
-        #             for i in range(self._number_conditions)]
         norm_fit_data = np.array(
             [self.normalized_fitness(data) for data in fit_data])
         weights = self.fitness_weights(norm_fit_data)
@@ -224,12 +191,12 @@ class Spec:
 
     def create_conditions(self, solution):
         """Create the conditions to be verified with an SMT solver."""
-        self.conditions = (True,)
+        return (True,)
 
     def verify(self, solution):
         """Verify the specification using an SMT solver."""
         # Create the conditions to verify
-        self.create_conditions(solution)
+        solution.substitute_parameters()
         # For each condition, verify the condition with dReal
         for i in range(0, self._number_conditions):
             # TODO: clean up passing a file name. Now this is only relevant for
@@ -237,7 +204,7 @@ class Spec:
             if hasattr(self.verifier, 'file_name'):
                 self.verifier.file_name = "con{}".format(i + 1)
             self.verification_result[i] = self.verifier.verify(
-                self.conditions[i],
+                solution.conditions[i],
                 self.condition_set[i],
                 self.var
             )
@@ -343,7 +310,6 @@ class RWS(Spec):
             closed_R_not_S_set = sp.And(R_set, sp.Not(S_open_set))
 
         self.condition_set = (I_set, closed_R_not_S_set, S_not_O_set)
-        self.conditions = None
         # TODO: this list containts n copies! change
         self.verification_result = [None] * self._number_conditions
 
@@ -354,7 +320,7 @@ class RWS(Spec):
         con2 = solution.V_sym > 0
         con3 = sp.Or(solution.V_sym > 0, solution.dtV_sym <= -self.gamma)
 
-        self.conditions = (con1, con2, con3)
+        return (con1, con2, con3)
 
 
 # var_list = x1, x2 = sp.symbols('x1,x2')

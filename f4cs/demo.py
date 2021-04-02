@@ -52,10 +52,8 @@ ind = Solution(spec)
 # ind.substitute_parameters(ind.par)
 
 sigma0 = 0.5
-spec.create_conditions(ind)
-spec.create_fitness(ind)
 cma.fmin(spec.parameter_fitness, ind.par, sigma0,
          args={ind, }, options={'verbose': -1})
 # TODO: subsitution of parameters broken.
-# spec.verify(ind)
-#print(spec.verification_result)
+spec.verify(ind)
+print(spec.verification_result)

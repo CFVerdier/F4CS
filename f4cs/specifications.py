@@ -105,11 +105,12 @@ class Spec:
     def sample_set(self, set_list, number_samples=None):
         """Sample a set defined by a set of interfals."""
         # If there is no argument of numpsamp, use atribute
+        n = len(set_list)
         if number_samples is None:
             number_samples = self.number_samples
         array = np.array(set_list)
         samples = (array[:, 1] - array[:, 0]) * self.rng.random(
-            (number_samples, self.n)
+            (number_samples, n)
         ) + array[:, 0]
         return samples
 
@@ -321,9 +322,3 @@ class RWS(Spec):
         con3 = sp.Or(solution.V_sym > 0, solution.dtV_sym <= -self.gamma)
 
         return (con1, con2, con3)
-
-
-# var_list = x1, x2 = sp.symbols('x1,x2')
-# input_list = u1, = sp.symbols('u1,')
-# f = sp.Or(x1+x2*u1 <= 2, x1 > 0)
-# c = 0.001

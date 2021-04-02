@@ -15,6 +15,16 @@ import verification
 # TODO: create symbolic fitness with parameters not substituted in.
 
 
+def custom_amax(x, **kwargs):
+    """Alternative maximum for lambdafication."""
+    return np.maximum(x[0], x[1])
+
+
+def custom_amin(x, **kwargs):
+    """Alternative minimum for lambdafication."""
+    return np.minimum(x[0], x[1])
+
+
 class Spec:
     """Base class of a specification.
 
@@ -74,7 +84,6 @@ class Spec:
 
         # Make functions of the dynamics
         self.f_sym = f_sym
-        self.f_fun = sp.lambdify([self.var, self.input], self.f_sym, "numpy")
 
         self.n = len(self.var)
         self.m = len(self.input)
@@ -157,7 +166,9 @@ class Spec:
             # Saturate minimal error
             f = sp.Min(f, 0.0)
             # Concatinate to result tuple
-            function = sp.lambdify([solution.p, self.var], f, "numpy")
+            function = sp.lambdify(
+                solution.p + self.var, f,
+                modules=[{'amax': custom_amax, 'amin': custom_amin}, "numpy"])
             result = result + (function,)
         self.fitness = result
 
@@ -174,9 +185,14 @@ class Spec:
 
     def sample_fitness(self, solution):
         """Compute the sample-based fitness."""
-        fit_data = [np.array([self.fitness[i](solution.par, point)
-                             for point in self.data_sets[i]])
+        par = solution.par
+
+        fit_data = [self.fitness[i](*par, *self.data_sets[i].T)
                     for i in range(self._number_conditions)]
+
+        # fit_data = [np.array([self.fitness[i](par, point)
+        #                      for point in self.data_sets[i]])
+        #             for i in range(self._number_conditions)]
         norm_fit_data = np.array(
             [self.normalized_fitness(data) for data in fit_data])
         weights = self.fitness_weights(norm_fit_data)

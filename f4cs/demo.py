@@ -15,11 +15,18 @@ var_list = x1, x2 = sp.symbols('x1,x2')
 input_list = u1, = sp.symbols('u1,')
 
 # Dynamics
-f_sym = sp.Matrix([x2, u1])  # Column vector
 
-Slist = [[-15, 15], [-15, 15]]
-Ilist = [[-5, 5], [-5, 5]]
-Olist = [[-1, 1], [-1, 1]]
+
+f_sym = sp.Matrix([x2, 19.6*sp.sin(x1)-16*x2+4*sp.cos(x1)*u1])
+
+Slist = [[-6, 6], [-10, 10]]
+Ilist = [[-0.5, 0.5], [-0.5, 0.5]]
+Olist = [[-0.25, 0.25], [-0.25, 0.25]]
+
+# f_sym = sp.Matrix([x2, u1])  # Column vector
+# Slist = [[-15, 15], [-15, 15]]
+# Ilist = [[-5, 5], [-5, 5]]
+# Olist = [[-1, 1], [-1, 1]]
 
 # path where the SMT files will be stored
 path = 'e:/docker_connect/data'
@@ -48,11 +55,24 @@ spec = RWS(var_list, input_list, f_sym, options)
 ind = Solution(spec)
 
 # Give the individual arbitrary new parameters for testing
-ind.par = [1, 1, 1]
-ind.substitute_parameters(ind.par)
+# ind.par = [1, 1, 1]
+# ind.substitute_parameters(ind.par)
 
+flag = False
 sigma0 = 0.5
+max_iterations = 30
+iterations = 0
 cma.fmin(spec.parameter_fitness, ind.par, sigma0,
          args={ind, }, options={'verbose': -9})
 spec.verify(ind)
-print(spec.verification_result)
+
+# while flag is False:
+#     cma.fmin(spec.parameter_fitness, ind.par, sigma0,
+#              args={ind, }, options={'verbose': -1})
+#     spec.verify(ind)
+#     verification_booleans = [result['sat']
+#                              for result in spec.verification_result]
+#     print(verification_booleans)
+#     flag = (all(verification_booleans) or (iterations > max_iterations))
+#     iterations += 1
+#     print(iterations)

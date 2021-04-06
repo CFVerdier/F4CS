@@ -10,6 +10,8 @@ import sympy as sp
 from specifications import Spec
 import pyibex
 
+# TODO: update to new specification format
+
 
 class LocalStability(Spec):
     """Local stability specification.
@@ -26,6 +28,7 @@ class LocalStability(Spec):
         self._number_conditions = 2  # number of local stability conditions
 
         D_list = self.options["Dlist"]
+        self.x0 = self.options.get('x0', sp.zeros(self.n, 1))
         # decrease of the LBF. Default 0.01
         self.gamma = self.options.get("gamma", 0.01)
         self.positive_definite = self.options.get(
@@ -33,7 +36,7 @@ class LocalStability(Spec):
 
         # Create sample sets
         D_data = self.sample_set(D_list)
-        self.data_sets = [D_data]
+        self.data_sets = [D_data, D_data]
 
         # Create symbolic domains for SMT solver
         D_set = sp.And()
@@ -47,105 +50,107 @@ class LocalStability(Spec):
         self.conditions = None
         self.verification_result = [None] * self._number_conditions
 
-    # Define the fitness function for RWS
-    def sample_fitness(self, solution):
-        """Compute the sample-based fitness."""
-        # Define pointwise functions for each LBF condition
-        def fit1(x):
-            return np.minimum(solution.V_fun(x) - self.positive_definite, 0.0)
+        self.f_abstracted = None
+        # Rewrite the system with the abstracted system
+        self.abstract_system()
 
-        def fit2(x):
-            dtV = np.dot(solution.dV_fun(
-                x), self.f_fun(x, solution.k_fun(x)))[0]
-            return np.minimum(
-                -dtV - self.gamma*solution.V_fun(x),
-                0.0)
+    def abstract_system(self):
+        """Abstract a general nonlinear system to a polynomial system."""
+        f = self.f_sym
+        interval = pyibex.IntervalVector(self.options["Dlist"])
+        x = sp.Matrix(self.var)
+        f0 = f.subs(zip(self.var, self.x0))
+        df = f.jacobian(x)
+        f1 = (df.subs(zip(self.var, self.x0)))*(x-self.x0)
+        symbolic_sub_matrix = [0]*self.n
+        counter = 1
+        string_variables = [str(x) for x in self.var]
+        aux_list = ()
+        aux_set_list = []
+        f2 = sp.zeros(self.n, 1)
+        for i in range(0, self.n):
+            for j in range(0, self.n):
+                vec = (self.var[i]-self.x0[i])*(self.var[j]-self.x0[j])
+                ddfij = sp.diff(f, self.var[i], self.var[j])
+                for k in range(0, self.n):
+                    my_fun = pyibex.Function(*string_variables, str(ddfij[k]))
+                    a = my_fun.eval(interval)
+                    if a.mag() == 0.0:
+                        # No interval at this position.
+                        symbolic_sub_matrix[k] = 0
+                    else:
+                        # Make a new variable
+                        new_aux = sp.Symbol('z'+str(counter))
+                        aux_set_list.append([a[0], a[1]])
+                        aux_list = aux_list + (new_aux,)
+                        # Add this variable at this position in the matrix
+                        symbolic_sub_matrix[k] = new_aux
+                        counter += 1
+                f2 = f2 + 0.5*sp.Matrix(symbolic_sub_matrix)*vec
 
-        # TODO: optimize
-        fit1_data = np.array([fit1(point) for point in self.data_sets[0]])
-        fit2_data = np.array([fit2(point) for point in self.data_sets[1]])
+        # create sets
+        # TODO: automate this function
+        aux_set = sp.And()
+        for i in range(len(aux_set_list)):
+            aux_set = sp.And(
+                aux_set, sp.And(aux_list[i] >= aux_set_list[i][0],
+                                aux_list[i] <= aux_set_list[i][1])
+            )
+        # TODO: hackish
 
-        fit1_val = 1 / (1 + np.linalg.norm(fit1_data))
-        fit2_val = 1 / (1 + np.linalg.norm(fit2_data))
+        aux_data = self.sample_set(aux_set_list, self.number_samples)
+        for i in range(self._number_conditions):
+            self.data_sets[i] = np.append(self.data_sets[i],
+                                          aux_data, axis=1)
 
-        w2 = np.floor(fit1_val)
-
-        return (fit1_val + w2 * fit2_val) / self._number_conditions
+        self.f_sym = f0 + f1 + f2
+        self.var = self.var + aux_list
+        new_conditions = [sp.And(condition, aux_set)
+                          for condition in self.condition_set]
+        self.condition_set = tuple(new_conditions)
 
     def create_conditions(self, solution):
         """Create the conditions to be verified with an SMT solver."""
         # create the conditions to verify
+        # con1 = solution.V_sym >= self.gamma*self.positive_definite
+        # con2 = solution.dtV_sym <= -self.gamma*solution.V_sym
         con1 = solution.V_sym >= self.positive_definite
-        con2 = solution.dtV_sym <= -self.gamma*solution.V_sym
+        con2 = solution.dtV_sym <= -self.positive_definite
 
-        self.conditions = (con1, con2,)
+        return (con1, con2,)
 
-    def abstract_system(self, solution):
-        """Abstract a general nonlinear system to a polynomial system."""
-        f = solution.f_sym
-        df = sp.diff(f, [self.var])
-        ddf = sp.diff(df, [self.var])
+    def demo():
+        """Short demo of the class."""
+        from candidates import Solution
+        import cma
+
+        var_list = x1, x2 = sp.symbols('x1,x2')
+
+        f_sym = sp.Matrix([x2,
+                           19.6*sp.sin(x1)-16*x2+4*sp.cos(x1)*(2.624*x1+1.0516*x2)])
+
+        D_list = [[-0.25, 0.25], [-0.25, 0.25]]
+        smt_options = {'solver': 'Z3'}
+
+        # Use dReal
+        # smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
+
+        options = {'Dlist': D_list,  # Interval list of the domain
+                   'number_samples': 100,  # Number of (initial) samples
+                   # Maximum number of samples (when adding violations)
+                   'max_samp': 300,
+                   'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
+                   'smt_options': smt_options,
+                   'epsilon': 0.1}  # Robustness buffer for the sample-based fitness
+
+        spec = LocalStability(var_list, (), f_sym, options)
+        # Create an (hardcoded) individual
+        ind = Solution(spec)
 
 
-# demo
-var_list = x1, x2 = sp.symbols('x1,x2')
-f = sp.Matrix([x2, sp.sin(x1)-0.1*x2+0.5*sp.cos(x1)*(-2*x1-0.1*x2)])
-df = sp.diff(f, [var_list])
-ddf = sp.diff(df, [var_list])
+        sigma0 = 0.5
+        cma.fmin(spec.parameter_fitness, ind.par, sigma0,
+                 args={ind, }, options={'verbose': -1})
 
-interval = pyibex.IntervalVector([[-1, 1], [-1, 1]])
-my_fun = pyibex.Function('x1', 'x2', str(ddf[0, 0, 1, 0]))
-my_fun.eval(interval)
-
-n = len(var_list)
-
-vec = [[0]*n for _ in range(n)]
-remainder = [[[0]*n for _ in range(n)] for _ in range(n)]
-symbolic_matrix = [[[0]*n for _ in range(n)] for _ in range(n)]
-myfun = [0]*n
-string_variables = [str(x) for x in var_list]
-counter = 1
-aux_list = []
-aux_set_list = []
-result_list = [[0]*n for _ in range(n)]
-for i in range(0, n):
-    for j in range(0, n):
-        vec[i][j] = var_list[i]*var_list[j]
-        ddfij = sp.diff(f, var_list[i], var_list[j])
-        for k in range(0, n):
-            # print(str(ddfij[k]))
-            my_fun = pyibex.Function(*string_variables, str(ddfij[k]))
-            a = my_fun.eval(interval)
-            # print(a)
-            remainder[i][j][k] = a
-            if a.mag() == 0.0:
-                symbolic_matrix[i][j][k] = 0
-            else:
-                new_aux = sp.Symbol('z'+str(counter))
-                aux_set_list.append([a[0], a[1]])
-                aux_list.append(new_aux)
-                symbolic_matrix[i][j][k] = new_aux
-                counter += 1
-        result_list[i][j] = sp.Matrix(symbolic_matrix[i][j])*vec[i][j]
-
-flat_results = [val for sublist in result_list for val in sublist]
-result = sp.zeros(n, 1)
-for element in flat_results:
-    result = result+element
-result = (0.5*result)
-result.simplify
-aux_list = tuple(aux_list)
-
-point = sp.zeros(2,1)
-
-# f_point = f.subs([(var_list[i], point[i]) for i in range(n)])
-# df_point = df.subs([(var_list[i], point[i]) for i in range(n)])
-
-# abstracted_f = f_sym(sp.zeros(2,1))
-
-print(str(aux_list) + ' in ' + str(aux_set_list))
-print(result)
-
-# TODO: clean up code
-# TODO: interface with Z3, clean up the verification class, etc
-# TODO: actually synthesize a LF, hihi
+        spec.verify(ind)
+        print(spec.verification_result)

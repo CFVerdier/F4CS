@@ -8,8 +8,15 @@ Created on Thu Apr  1 13:46:24 2021
 import numpy as np
 import collections
 import os.path
-import subprocess
+import platform
 import z3
+
+if platform.system() == 'Windows':
+    from os_support._windows_support import call_dReal
+elif (platform.system() == 'Linux') or (platform.system() == 'Darwin'):
+    from ._unix_support import call_dReal
+else:
+    raise ImportError("The verification method does not support this OS")
 
 
 class Verification:
@@ -98,6 +105,8 @@ class Verification:
         string = string + "(exit)"
         return string
 
+class OptionsError(Exception):
+    pass
 
 class Dreal(Verification):
     """dReal based verification.
@@ -118,6 +127,14 @@ class Dreal(Verification):
         self.t_max = self.options.get("dreal_precision", None)
         self.file_name = self.options.get("file_name", "file.smt2")
 
+        # Check for unix-based OSes whether the dReal path is supplied
+        if (platform.system() == 'Linux') or (platform.system() == 'Darwin'):
+            try:
+                self.dReal_path = self.options["dReal_path"]
+            except KeyError:
+                raise OptionsError('Please supply the dReal path to ' +
+                                      'options under the key "dReal_path"')
+
     def call(self):
         """Call dReal.
 
@@ -132,23 +149,8 @@ class Dreal(Verification):
         result = {}
         print("Calling dReal")
         try:
-            # dReal
-            if self.t_max is None:
-                outputdReal = subprocess.check_output(
-                    ['powershell.exe',
-                     "docker run -v " + self.path
-                     + ":/data --rm dreal/dreal4 dreal data/" + self.file_name
-                     + " --model"],
-                    shell=True, stderr=subprocess.STDOUT).decode("utf-8")
-            else:
-                outputdReal = subprocess.check_output(
-                    ['powershell.exe',
-                     "docker run -v " + self.path
-                     + ":/data --rm dreal/dreal4 dreal data/" + self.file_name
-                     + " --model"],
-                    shell=True,
-                    stderr=subprocess.STDOUT,
-                    timeout=self.t_max).decode("utf-8")
+            # dReal call, OS specific
+            outputdReal = call_dReal(self)
         except Exception:
             outputdReal = 'time-out'
             result['time-out'] = True

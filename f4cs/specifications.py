@@ -12,7 +12,6 @@ import verification
 
 # TODO: initalize with [0]*n creates a n times a copy. This can create odd
 # effects
-# TODO: create symbolic fitness with parameters not substituted in.
 
 
 def custom_amax(x, **kwargs):

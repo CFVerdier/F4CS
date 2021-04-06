@@ -7,11 +7,12 @@ Created on Tue Apr  6 12:59:31 2021
 
 import subprocess
 
+
 def call_dReal(specification):
-    """ Call dReal.
+    """Call dReal.
+
     OS specific
     """
-
     if specification.t_max is None:
         outputdReal = subprocess.check_output(
             ['powershell.exe',

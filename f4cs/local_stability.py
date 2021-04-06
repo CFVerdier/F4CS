@@ -127,7 +127,8 @@ class LocalStability(Spec):
         var_list = x1, x2 = sp.symbols('x1,x2')
 
         f_sym = sp.Matrix([x2,
-                           19.6*sp.sin(x1)-16*x2+4*sp.cos(x1)*(2.624*x1+1.0516*x2)])
+                           19.6*sp.sin(x1)-16*x2 +
+                           4*sp.cos(x1)*(2.624*x1+1.0516*x2)])
 
         D_list = [[-0.25, 0.25], [-0.25, 0.25]]
         smt_options = {'solver': 'Z3'}
@@ -141,12 +142,11 @@ class LocalStability(Spec):
                    'max_samp': 300,
                    'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
                    'smt_options': smt_options,
-                   'epsilon': 0.1}  # Robustness buffer for the sample-based fitness
+                   'epsilon': 0.1}  # Robustness buffer of sample-based fitness
 
         spec = LocalStability(var_list, (), f_sym, options)
         # Create an (hardcoded) individual
         ind = Solution(spec)
-
 
         sigma0 = 0.5
         cma.fmin(spec.parameter_fitness, ind.par, sigma0,

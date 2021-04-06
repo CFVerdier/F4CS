@@ -32,10 +32,10 @@ Olist = [[-0.25, 0.25], [-0.25, 0.25]]
 path = 'e:/docker_connect/data'
 
 # Use Z3
-smt_options = {'solver': 'Z3'}
+# smt_options = {'solver': 'Z3'}
 
 # Use dReal
-# smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
+smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
 
 options = {'Slist': Slist,  # Interval list of the safe set
            'Ilist': Ilist,  # Interval list of the initial set
@@ -58,9 +58,21 @@ ind = Solution(spec)
 # ind.par = [1, 1, 1]
 # ind.substitute_parameters(ind.par)
 
+flag = False
 sigma0 = 0.5
+max_iterations = 30
+iterations = 0
 cma.fmin(spec.parameter_fitness, ind.par, sigma0,
          args={ind, }, options={'verbose': -1})
-# TODO: subsitution of parameters broken.
-# spec.verify(ind)
-# print(spec.verification_result)
+spec.verify(ind)
+
+# while flag is False:
+#     cma.fmin(spec.parameter_fitness, ind.par, sigma0,
+#              args={ind, }, options={'verbose': -1})
+#     spec.verify(ind)
+#     verification_booleans = [result['sat']
+#                              for result in spec.verification_result]
+#     print(verification_booleans)
+#     flag = (all(verification_booleans) or (iterations > max_iterations))
+#     iterations += 1
+#     print(iterations)

@@ -114,46 +114,43 @@ class LocalStability(Spec):
         # create the conditions to verify
         # con1 = solution.V_sym >= self.gamma*self.positive_definite
         # con2 = solution.dtV_sym <= -self.gamma*solution.V_sym
-        con1 = solution.V_sym >= self.gamma*self.positive_definite
-        con2 = solution.dtV_sym <= -self.gamma*self.positive_definite
+        con1 = solution.V_sym >= self.positive_definite
+        con2 = solution.dtV_sym <= -self.positive_definite
 
         return (con1, con2,)
 
-# demo
-from candidates import Solution
-import cma
+    def demo():
+        """Short demo of the class."""
+        from candidates import Solution
+        import cma
 
-var_list = x1, x2 = sp.symbols('x1,x2')
+        var_list = x1, x2 = sp.symbols('x1,x2')
 
-f_sym = sp.Matrix([x2,
-                   19.6*sp.sin(x1)-16*x2+4*sp.cos(x1)*(2.624*x1+1.0516*x2)])
+        f_sym = sp.Matrix([x2,
+                           19.6*sp.sin(x1)-16*x2+4*sp.cos(x1)*(2.624*x1+1.0516*x2)])
 
-D_list = [[-0.25, 0.25], [-0.25, 0.25]]
-smt_options = {'solver': 'Z3'}
+        D_list = [[-0.25, 0.25], [-0.25, 0.25]]
+        smt_options = {'solver': 'Z3'}
 
-# Use dReal
-# smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
+        # Use dReal
+        # smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
 
-options = {'Dlist': D_list,  # Interval list of the domain
-           'number_samples': 100,  # Number of (initial) samples
-           # Maximum number of samples (when adding violations)
-           'max_samp': 300,
-           'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
-           'smt_options': smt_options,
-           'epsilon': 0.1}  # Robustness buffer for the sample-based fitness
+        options = {'Dlist': D_list,  # Interval list of the domain
+                   'number_samples': 100,  # Number of (initial) samples
+                   # Maximum number of samples (when adding violations)
+                   'max_samp': 300,
+                   'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
+                   'smt_options': smt_options,
+                   'epsilon': 0.1}  # Robustness buffer for the sample-based fitness
 
-spec = LocalStability(var_list, (), f_sym, options)
-# Create an (hardcoded) individual
-ind = Solution(spec)
+        spec = LocalStability(var_list, (), f_sym, options)
+        # Create an (hardcoded) individual
+        ind = Solution(spec)
 
 
-sigma0 = 0.5
-cma.fmin(spec.parameter_fitness, ind.par, sigma0,
-         args={ind, }, options={'verbose': -1})
+        sigma0 = 0.5
+        cma.fmin(spec.parameter_fitness, ind.par, sigma0,
+                 args={ind, }, options={'verbose': -1})
 
-spec.verify(ind)
-print(spec.verification_result)
-
-# TODO: clean up code
-# TODO: interface with Z3, clean up the verification class, etc
-# TODO: actually synthesize a LF, hihi
+        spec.verify(ind)
+        print(spec.verification_result)

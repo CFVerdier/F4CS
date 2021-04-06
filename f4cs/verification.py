@@ -105,8 +105,10 @@ class Verification:
         string = string + "(exit)"
         return string
 
-class OptionsError(Exception):
+
+class _OptionsError(Exception):
     pass
+
 
 class Dreal(Verification):
     """dReal based verification.
@@ -132,8 +134,8 @@ class Dreal(Verification):
             try:
                 self.dReal_path = self.options["dReal_path"]
             except KeyError:
-                raise OptionsError('Please supply the dReal path to ' +
-                                      'options under the key "dReal_path"')
+                raise _OptionsError('Please supply the dReal path to ' +
+                                    'options under the key "dReal_path"')
 
     def call(self):
         """Call dReal.

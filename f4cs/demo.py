@@ -7,6 +7,7 @@ Created on Mon Mar 29 18:26:48 2021
 import sympy as sp
 from specifications import RWS
 from candidates import Solution
+import synthesis
 import cma
 
 # import timeit
@@ -47,10 +48,16 @@ options = {'Slist': Slist,  # Interval list of the safe set
            'gamma': 0.01,  # (arbitrary) decrease of the LF
            'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
            'smt_options': smt_options,
-           'epsilon': 0.1}  # Robustness buffer for the sample-based fitness
-
+           'epsilon': 0.1,  # Robustness buffer for the sample-based fitness
+           'max_iterations': 30
+           }
 # Initialize specification
 spec = RWS(var_list, input_list, f_sym, options)
+
+synthesiser = synthesis.TBS(options)
+solution = synthesiser.synthesis(spec)
+
+
 # Create an (hardcoded) individual
 ind = Solution(spec)
 
@@ -58,13 +65,13 @@ ind = Solution(spec)
 # ind.par = [1, 1, 1]
 # ind.substitute_parameters(ind.par)
 
-flag = False
-sigma0 = 0.5
-max_iterations = 30
-iterations = 0
-cma.fmin(spec.parameter_fitness, ind.par, sigma0,
-         args={ind, }, options={'verbose': -9})
-spec.verify(ind)
+# flag = False
+# sigma0 = 0.5
+# max_iterations = 30
+# iterations = 0
+# cma.fmin(spec.parameter_fitness, ind.par, sigma0,
+#          args={ind, }, options={'verbose': -1})
+# spec.verify(ind)
 
 # while flag is False:
 #     cma.fmin(spec.parameter_fitness, ind.par, sigma0,

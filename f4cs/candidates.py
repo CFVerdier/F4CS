@@ -7,7 +7,6 @@ Created on Mon Mar 29 18:24:34 2021
 
 import sympy as sp
 import numpy as np
-from specifications import RWS
 
 # TODO use the class below for new individuals
 # TODO: use @property(?) for parameters?
@@ -25,29 +24,34 @@ def custom_amin(x, **kwargs):
 
 
 class Solution:
-    """ Stores and manipulates a candidate solution for RWS.
+    """Stores and manipulates a candidate solution for RWS.
 
-    Constructor arguments:
+    Constructor arguments
+    ---------------------
         S (spec): specification from the RWS class
 
-    Optimal arguments:
+    Optimal arguments
+    -----------------
         none
 
-    Attributes:
+    Attributes
+    ----------
         TODO
 
-    Methods:
-        none
+    Methods
+    -------
+        TODO
     """
-    # TODO: variable in the entities that it can has: LF, controller, auxillary functions
 
     def __init__(self, S):
-
+        # TODO: variable in the entities that it can has: LF, controller,
+        # auxillary functions
         # if isinstance(S, RWS):  # Check if it is a RWS spec.
         # TODO replace with e.g. a dictionary to switch modes
         # HARDCODED CONTROLLER AND CLBF
         # self.par = [-1, -2, -78]
 
+        print(S)
         self.spec = S
 
         self.par = [1, 1, 1, 1, 1, 1]
@@ -113,26 +117,3 @@ class Solution:
                 modules=[{'amax': custom_amax, 'amin': custom_amin}, "numpy"])
             result = result + (function,)
         self.fitness = result
-
-    # def substitute_parameters(self, z):
-    #     self.par = z
-    #     self.k_sym = self.k_sym_p.subs(
-    #         [(self.p[i], self.par[i]) for i in range(self.par_len)])
-    #     self.V_sym = self.V_sym_p.subs(
-    #         [(self.p[i], self.par[i]) for i in range(self.par_len)])
-    #     self.dV_sym = sp.diff(self.V_sym, [self.S.var])
-    #     self.dtV_sym = sp.Matrix(self.dV_sym).dot(
-    #         self.S.f_sym).subs(zip(self.S.input, self.k_sym))
-
-        # self.make_functions()
-
-    # def make_functions(self):
-    #     # Make a Controller and LBF function
-    #     self.k_fun = sp.lambdify([self.S.var], self.k_sym, "numpy")
-    #     self.V_fun = sp.lambdify([self.S.var], self.V_sym, "numpy")
-
-    #     # Compute the derivatives and make into functions
-    #     self.dV_sym = sp.diff(self.V_sym, [self.S.var])
-    #     self.dV_fun = sp.lambdify([self.S.var], self.dV_sym, "numpy")
-    #     self.dtV_sym = sp.Matrix(self.dV_sym).dot(
-    #         self.S.f_sym).subs(zip(self.S.input, self.k_sym))

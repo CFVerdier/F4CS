@@ -9,16 +9,14 @@ import subprocess
 import os
 
 
-
 def call_dReal(verifier):
-    """ Call dReal.
+    """Call dReal.
 
     OS specific.
     """
     dreal_path = verifier.dReal_path
     base_path = verifier.path
     file_name = verifier.file_name
-
 
     if verifier.t_max is None:
         outputdReal = subprocess.check_output(
@@ -30,4 +28,3 @@ def call_dReal(verifier):
             timeout=verifier.t_max).decode("utf-8")
 
     return outputdReal
-

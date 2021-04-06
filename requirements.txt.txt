@@ -4,3 +4,5 @@ cma
 os
 collections
 subprocess
+z3-solver
+pyibex

@@ -18,8 +18,11 @@ setup(
         'sympy',
         'cma',
         'os',
+        'platform',
         'collections',
-        'subprocess'
+        'subprocess',
+        'z3-solver',
+        'pyibex'
     ],
     python_requires=">=3.8"
 )

@@ -1,3 +1,5 @@
 *.pyc
 f4cs/.pylint.d/
 f4cs/outcmaes
+
+f4cs.egg-info

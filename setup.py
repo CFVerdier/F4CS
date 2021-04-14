@@ -17,10 +17,6 @@ setup(
         'numpy',
         'sympy',
         'cma',
-        'os',
-        'platform',
-        'collections',
-        'subprocess',
         'z3-solver',
         'pyibex'
     ],

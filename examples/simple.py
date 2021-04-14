@@ -13,21 +13,20 @@ var_list = x1, x2 = sp.symbols('x1,x2')
 input_list = u1, = sp.symbols('u1,')
 
 # Define your Dynamics
-f_sym = sp.Matrix([x2, 19.6*sp.sin(x1)-16*x2+4*sp.cos(x1)*u1])
+f_sym = sp.Matrix([x2, u1])  # Column vector
 
-Slist = [[-6, 6], [-10, 10]]
-Ilist = [[-0.5, 0.5], [-0.5, 0.5]]
-Olist = [[-0.25, 0.25], [-0.25, 0.25]]
+# RWS specification
+Slist = [[-15, 15], [-15, 15]]
+Ilist = [[-5, 5], [-5, 5]]
+Olist = [[-1, 1], [-1, 1]]
+
 
 
 # path where the SMT files will be stored
 path = 'e:/docker_connect/data'
 
 # Use Z3
-# smt_options = {'solver': 'Z3'}
-
-# Use dReal
-smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
+smt_options = {'solver': 'Z3'}
 
 options = {'Slist': Slist,  # Interval list of the safe set
            'Ilist': Ilist,  # Interval list of the initial set

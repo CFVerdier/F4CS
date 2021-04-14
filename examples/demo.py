@@ -5,10 +5,8 @@ Created on Mon Mar 29 18:26:48 2021
 @author: ceesv
 """
 import sympy as sp
-from specifications import RWS
-from candidates import Solution
-import synthesis
-import cma
+from f4cs.specifications import RWS
+from f4cs.synthesis import TBS
 
 # import timeit
 
@@ -49,12 +47,12 @@ options = {'Slist': Slist,  # Interval list of the safe set
 # Initialize specification
 spec = RWS(var_list, input_list, f_sym, options)
 
-synthesiser = synthesis.TBS(options)
+synthesiser = TBS(options)
 solution = synthesiser.synthesis(spec)
 
 
 # Create an (hardcoded) individual
-ind = Solution(spec)
+# ind = Solution(spec)
 
 # Give the individual arbitrary new parameters for testing
 # ind.par = [1, 1, 1]

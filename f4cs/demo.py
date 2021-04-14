@@ -12,22 +12,17 @@ import cma
 
 # import timeit
 
+# Define variables
 var_list = x1, x2 = sp.symbols('x1,x2')
 input_list = u1, = sp.symbols('u1,')
 
 # Dynamics
-
-
 f_sym = sp.Matrix([x2, 19.6*sp.sin(x1)-16*x2+4*sp.cos(x1)*u1])
 
 Slist = [[-6, 6], [-10, 10]]
 Ilist = [[-0.5, 0.5], [-0.5, 0.5]]
 Olist = [[-0.25, 0.25], [-0.25, 0.25]]
 
-# f_sym = sp.Matrix([x2, u1])  # Column vector
-# Slist = [[-15, 15], [-15, 15]]
-# Ilist = [[-5, 5], [-5, 5]]
-# Olist = [[-1, 1], [-1, 1]]
 
 # path where the SMT files will be stored
 path = 'e:/docker_connect/data'

@@ -26,10 +26,10 @@ class TBS(Synthesis):
         Synthesis.__init__(self, options)
         self.sigma0 = options.get('sigma_0', 0.5)
 
-    def synthesis(self, spec):
+    def synthesis(self, spec, template={}):
         """Synthesize controller."""
-        # Create an (hardcoded) individual
-        solution = Solution(spec)
+        # Create a candidate object based on the template.
+        candidate = Solution(spec, template)
 
         # Keep iterating until a maximum of iterations is met, or a solution
         # is found
@@ -37,10 +37,10 @@ class TBS(Synthesis):
                 (self.iteration < self.max_iterations):
             self.iteration += 1
             # Optimize parameters
-            cma.fmin(spec.parameter_fitness, solution.par, self.sigma0,
-                     args={solution, }, options={'verbose': -1})
+            cma.fmin(spec.parameter_fitness, candidate.par, self.sigma0,
+                     args={candidate, }, options={'verbose': -9})
             # Verify candidate solution
-            spec.verify(solution)
+            spec.verify(candidate)
             verification_booleans = [result['sat']
                                      for result in spec.verification_result]
             self.issolution = all(verification_booleans)
@@ -52,4 +52,4 @@ class TBS(Synthesis):
             print('No solution found in {}'.format(self.iteration)
                   + ' iterations')
 
-        return solution
+        return candidate

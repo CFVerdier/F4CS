@@ -43,7 +43,7 @@ class Solution:
         TODO
     """
 
-    def __init__(self, S):
+    def __init__(self, S, template={}):
         # TODO: variable in the entities that it can has: LF, controller,
         # auxillary functions
         # if isinstance(S, RWS):  # Check if it is a RWS spec.
@@ -54,16 +54,13 @@ class Solution:
         print(S)
         self.spec = S
 
-        self.par = [1, 1, 1, 1, 1, 1]
-        self.par_len = len(self.par)
-        self.p = sp.symbols('p0:{}'.format(self.par_len))
-        p = self.p
-        x = self.spec.var
-        self.k_sym_p = sp.Array([p[0]*x[0]+p[1]*x[1]])
-        self.V_sym_p = p[2]*x[0]**2+p[3]*x[1]**2+p[4]*x[0]*x[1]+p[5]
+        self.p = template.get('parameters', 0)
+        self.par_len = len(self.p)
+        self.par = template.get('values', np.zeros(self.par_len))
+        # TODO: give a nice template (linear and quadratic), if none is supplied
+        self.k_sym = template.get('controller', sp.zeros(self.spec.n, 1))
+        self.V_sym = template.get('certificate', 0)
 
-        self.k_sym = self.k_sym_p
-        self.V_sym = self.V_sym_p
         # self.dV_sym = sp.diff(self.V_sym, [self.spec.var])
         # TODO: hack around auxillary variables
         self.dV_sym = sp.diff(self.V_sym, [self.spec.var[:self.spec.n]])

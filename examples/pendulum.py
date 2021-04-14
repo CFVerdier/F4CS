@@ -19,6 +19,22 @@ Slist = [[-6, 6], [-10, 10]]
 Ilist = [[-0.5, 0.5], [-0.5, 0.5]]
 Olist = [[-0.25, 0.25], [-0.25, 0.25]]
 
+# Create a vector of constants for the template, as well as a symbolic variant
+constants = [1, 1, 1, 1, 1, 1]
+p = sp.symbols('p0:{}'.format(len(constants)))
+
+# Define a controller and certificate function template
+k_template = sp.Array([p[0]*x1+p[1]*x2])
+v_template = p[2]*x1**2+p[3]*x2**2+p[4]*x1*x2+p[5]
+
+# Create a template dictionary. If 'constants' is kept empty, default values
+# are used.
+template = {'controller': k_template,
+            'certificate': v_template,
+            'parameters': p,
+            'values': constants  # optional. Otherwise, initialized with zeros
+            }
+
 
 # path where the SMT files will be stored
 path = 'e:/docker_connect/data'
@@ -45,7 +61,10 @@ options = {'Slist': Slist,  # Interval list of the safe set
 # Initialize specification
 spec = RWS(var_list, input_list, f_sym, options)
 
+# Initialize specification
+spec = RWS(var_list, input_list, f_sym, options)
+
+# Initialize an template-based synthesis procedure.
 synthesiser = TBS(options)
-solution = synthesiser.synthesis(spec)
-
-
+# Synthesize a solution.
+solution = synthesiser.synthesis(spec, template)

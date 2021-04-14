@@ -6,7 +6,7 @@ Created on Tue Apr  6 15:54:28 2021
 """
 
 import cma
-from candidates import Solution
+from .candidates import Solution
 
 
 class Synthesis:

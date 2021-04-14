@@ -12,7 +12,7 @@ import platform
 import z3
 
 if platform.system() == 'Windows':
-    from os_support._windows_support import call_dReal
+    from .os_support._windows_support import call_dReal
 elif (platform.system() == 'Linux') or (platform.system() == 'Darwin'):
     from ._unix_support import call_dReal
 else:

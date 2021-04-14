@@ -7,7 +7,7 @@ Created on Tue Mar 30 21:35:41 2021
 
 import numpy as np
 import sympy as sp
-from specifications import Spec
+from .specifications import Spec
 import pyibex
 
 # TODO: update to new specification format

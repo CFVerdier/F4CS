@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Apr 14 13:58:59 2021
-
-@author: ceesv
-"""
+"""Demo."""
 import sympy as sp
 from f4cs.specifications import RWS
 from f4cs.synthesis import TBS
@@ -62,3 +57,5 @@ spec = RWS(var_list, input_list, f_sym, options)
 synthesiser = TBS(options)
 # Synthesize a solution.
 solution = synthesiser.synthesis(spec, template)
+
+

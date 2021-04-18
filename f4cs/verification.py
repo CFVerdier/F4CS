@@ -66,7 +66,7 @@ class Verification:
             sform = str(expr)
         elif name in self.sym_dict_exceptions:
             sform = "(" + self.symbolic_name_to_lisp(name)
-            sform = sform + " " + self.ymbolic_to_lisp(expr.args[0])
+            sform = sform + " " + self.symbolic_to_lisp(expr.args[0])
             for arg in expr.args[1:-1]:
                 sform = sform + " (" + self.symbolic_name_to_lisp(name) + \
                     " " + self.symbolic_to_lisp(arg)

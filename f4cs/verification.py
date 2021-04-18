@@ -40,6 +40,7 @@ class Verification:
                                                  "Or": "or",
                                                  "Not": "not",
                                                  "Max": "max",
+                                                 "Min": "min",
                                                  "Abs": "abs",
                                                  "Unequality": "!",
                                                  "Equality": "="})

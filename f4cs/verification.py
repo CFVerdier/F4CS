@@ -64,6 +64,9 @@ class Verification:
         """Translate function from symbolic python to SMT2 expressions."""
         name = expr.func.__name__
         if name in self.num_dict:
+            # for rational we must convert to numerical value
+            if name == "Rational" or name == "Half":
+                expr = float(expr)
             sform = str(expr)
         elif name in self.sym_dict_exceptions:
             sform = "(" + self.symbolic_name_to_lisp(name)

@@ -38,7 +38,7 @@ class TBS(Synthesis):
             self.iteration += 1
             # Optimize parameters
             cma.fmin(spec.parameter_fitness, candidate.par, self.sigma0,
-                     args={candidate, }, options={'verbose': -9})
+                     args={candidate, }, options={'verbose': -1})
             # Verify candidate solution
             spec.verify(candidate)
             verification_booleans = [result['sat']

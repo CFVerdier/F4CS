@@ -57,8 +57,7 @@ class Solution:
         self.p = template.get('parameters', 0)
         self.par_len = len(self.p)
         self.par = template.get('values', np.zeros(self.par_len))
-        # TODO: give a nice template (linear and quadratic),
-        # if none is supplied
+        # TODO: give a nice template (linear and quadratic), if none is supplied
         self.k_sym = template.get('controller', sp.zeros(self.spec.n, 1))
         self.V_sym = template.get('certificate', 0)
 

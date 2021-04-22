@@ -63,6 +63,8 @@ options = {'Slist': Slist,  # Interval list of the safe set
 # Initialize specification
 spec = RWS(var_list, input_list, f_sym, options)
 
+# Initialize specification
+spec = RWS(var_list, input_list, f_sym, options)
 
 # Initialize an template-based synthesis procedure.
 synthesiser = TBS(options)

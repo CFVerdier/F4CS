@@ -40,6 +40,7 @@ class Verification:
                                                  "Or": "or",
                                                  "Not": "not",
                                                  "Max": "max",
+                                                 "Min": "min",
                                                  "Abs": "abs",
                                                  "Unequality": "!",
                                                  "Equality": "="})
@@ -63,10 +64,13 @@ class Verification:
         """Translate function from symbolic python to SMT2 expressions."""
         name = expr.func.__name__
         if name in self.num_dict:
+            # for rational we must convert to numerical value
+            if name == "Rational" or name == "Half":
+                expr = float(expr)
             sform = str(expr)
         elif name in self.sym_dict_exceptions:
             sform = "(" + self.symbolic_name_to_lisp(name)
-            sform = sform + " " + self.ymbolic_to_lisp(expr.args[0])
+            sform = sform + " " + self.symbolic_to_lisp(expr.args[0])
             for arg in expr.args[1:-1]:
                 sform = sform + " (" + self.symbolic_name_to_lisp(name) + \
                     " " + self.symbolic_to_lisp(arg)

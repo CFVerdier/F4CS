@@ -7,6 +7,7 @@ Created on Tue Apr  6 15:54:28 2021
 
 import cma
 from .candidates import Solution
+import time
 
 
 class Synthesis:
@@ -16,7 +17,12 @@ class Synthesis:
         self.issolution = False
         self.mode = options.get('mode', 'template-based')
         self.max_iterations = options.get('max_iterations', 10)
-        self.iteration = 0
+        self.iteration = None
+        self.synthesis_time = None
+        # Store past number of iterations and synthesis time. Useful for
+        # logging past experiments
+        self.iterations = []
+        self.synthesis_times = []
 
 
 class TBS(Synthesis):
@@ -29,10 +35,13 @@ class TBS(Synthesis):
     def synthesis(self, spec, template={}):
         """Synthesize controller."""
         # Create a candidate object based on the template.
+        self.issolution = False
         candidate = Solution(spec, template)
 
         # Keep iterating until a maximum of iterations is met, or a solution
         # is found
+        self.iteration = 0
+        t_start = time.time()
         while self.issolution is False and \
                 (self.iteration < self.max_iterations):
             self.iteration += 1
@@ -45,11 +54,19 @@ class TBS(Synthesis):
                                      for result in spec.verification_result]
             self.issolution = all(verification_booleans)
 
+        self.synthesis_time = time.time()-t_start
         if self.issolution is True:
             print('Solution found in {}'.format(self.iteration)
                   + ' iterations')
+            print('Synthesis time: {}'.format(self.synthesis_time)
+                  + ' seconds')
         else:
             print('No solution found in {}'.format(self.iteration)
                   + ' iterations')
+            print('Synthesis time: {}'.format(self.synthesis_time)
+                  + ' seconds')
+        # Update log of synthesis times and iterations
+        self.iterations.append(self.iteration)
+        self.synthesis_times.append(self.synthesis_time)
 
         return candidate

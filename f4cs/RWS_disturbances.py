@@ -50,11 +50,11 @@ class RWSDisturbed(Spec):
 
         self._number_conditions = 3  # number of RWS conditions
 
-        S_list = self.options["Slist"]
-        I_list = self.options["Ilist"]
-        O_list = self.options["Olist"]
-        aux_list = self.options["auxlist"]
-        self.aux_var = self.options["aux_var"]
+        S_list = self.options["S_list"]
+        I_list = self.options["I_list"]
+        O_list = self.options["O_list"]
+        aux_list = self.options["auxiliary_list"]
+        self.aux_var = self.options["auxiliary"]
         # decrease of the LBF. Default 0.01
         self.gamma = self.options.get("gamma", 0.01)
 

@@ -5,6 +5,7 @@ from f4cs.RWS_disturbances import RWSDisturbed
 from f4cs.synthesis import TBS
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+import time
 
 
 def saturate(x):
@@ -37,17 +38,15 @@ u_sat = sp.Matrix([saturate(u1), saturate(u2), saturate(u3)])
 f_sym = J_inv*(x.cross(J*x)) + J_inv*u_sat
 
 # Define the system specification sets and disturbance set
-Slist = [[-2, 2], [-2, 2], [-2, 2]]
-Ilist = [[-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]]
-Olist = [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
+S_list = [[-2, 2], [-2, 2], [-2, 2]]
+I_list = [[-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]]
+O_list = [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
 Omega_list = [[-0.01, 0.01], [-0.01, 0.01], [-0.01, 0.01]]
 
 # Assuming a quadratic LF and linear controller,
 p = sp.symbols('p0:{}'.format(n**2+n*m+1))
-p_k = p[0:n*m]
-p_v = p[n*m:n**2+n*m]
-K = sp.Matrix(sp.Array(p_k).reshape(m, n))
-Q = sp.Matrix(sp.Array(p_v).reshape(n, n))
+K = sp.Matrix(p[0:n*m].reshape(m, n))
+Q = sp.Matrix(p[n*m:n**2+n*m].reshape(n, n))
 
 k_template = K*y
 v_template = (x.T*Q*x)[0] + p[n**2+n*m]
@@ -64,11 +63,14 @@ path = 'e:/docker_connect/data'
 # Use dReal and set its specific options
 smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
 
-options = {'Slist': Slist,  # Interval list of the safe set
-           'Ilist': Ilist,  # Interval of the initial set
-           'Olist': Olist,  # Interval list of the goal set
-           'auxlist': Omega_list,  # Interval of the disturbances
-           'aux_var': dist_var,  # list of symbolic disturbance variables
+options = {'variables': var_list,  # List of symbolic states
+           'inputs': input_list,  # List of symbolic inputs
+           'auxiliary': dist_var,  # List of auxiliary variables/disturbances
+           'system': f_sym,  # System dynamics
+           'S_list': S_list,  # Interval list of the safe set
+           'I_list': I_list,  # Interval of the initial set
+           'O_list': O_list,  # Interval list of the goal set
+           'auxiliary_list': Omega_list,  # Interval of the disturbances
            'number_samples': 50000,  # Number of (initial) samples
            'max_samp': 52000,  # Maximum number of counterexamples
            'gamma': 0.01,  # (arbitrary) decrease of the LF
@@ -78,13 +80,35 @@ options = {'Slist': Slist,  # Interval list of the safe set
            'max_iterations': 100
            }
 
-# Initiate the specification
-spec = RWSDisturbed(var_list, input_list, f_sym, options)
+# options = {'Slist': Slist,  # Interval list of the safe set
+#            'Ilist': Ilist,  # Interval of the initial set
+#            'Olist': Olist,  # Interval list of the goal set
+#            'auxlist': Omega_list,  # Interval of the disturbances
+#            'aux_var': dist_var,  # list of symbolic disturbance variables
+#            'number_samples': 50000,  # Number of (initial) samples
+#            'max_samp': 52000,  # Maximum number of counterexamples
+#            'gamma': 0.01,  # (arbitrary) decrease of the LF
+#            'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
+#            'smt_options': smt_options,  # SMT solver options
+#            'epsilon': 0.1,  # Robustness buffer for the sample-based fitness
+#            'max_iterations': 100
+#            }
 
-# Initialize an template-based synthesis procedure.
-synthesiser = TBS(options)
-# Synthesize a solution.
-solution = synthesiser.synthesis(spec, template)
+# Repeated test
+number_runs = 10
+timing = [0]*number_runs
+iterations = [0]*number_runs
+
+for i in range(number_runs):
+    # Initiate the specification
+    spec = RWSDisturbed(options)
+    # Initialize an template-based synthesis procedure.
+    synthesiser = TBS(options)
+    # Synthesize a solution.
+    t_start = time.time()
+    solution = synthesiser.synthesis(spec, template)
+    timing[i] = time.time()-t_start
+    iterations[i] = synthesiser.iteration
 
 # Extract the controller (plus some input disturbances)
 t = sp.symbols('t')

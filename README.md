@@ -3,7 +3,7 @@
 Correct-by-Construction Closed-form Controller Synthesis
 
 # Installation
-In the current beta form, the project is not yet available on PyPi. Instead, download the project and run
+This tool is still in beta. The project is not yet available on PyPi. Instead, download the project and run
 ```
 pip install -e <path>
 ```

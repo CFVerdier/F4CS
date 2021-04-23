@@ -1,6 +1,6 @@
-# 4CS
+# F4CS
 
-Correct-by-Construction Closed-form Controller Synthesis
+(Formal) Correct-by-Construction Closed-form Controller Synthesis.
 
 # Installation
 This tool is still in beta. The project is not yet available on PyPi. Instead, download the project and run
@@ -41,4 +41,7 @@ Example files are included in the `example` folder. For more details, visit the 
 For more details, please visit the wiki:
 https://github.com/CFVerdier/F4CS/wiki
 
+# Non-frequent unimportant questions
+- _Why F4CS, and not 4CS?_ Strictly speaking, the 'Formal' is superfluous. However, Python packages should not start with numbers.
+- _How do you pronounce F4CS?_ I pronounce it as 'forsees'.
 

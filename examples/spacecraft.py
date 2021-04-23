@@ -17,6 +17,13 @@ from f4cs.synthesis import TBS
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
+# CHANGE TO YOUR SYSTEM PATHS:
+
+# path where the SMT files will be stored
+path = 'e:/docker_connect/data'
+# Path of dReal (Mac/Linux only)
+dReal_path = '/opt/dreal/4.18.02.2/bin/dreal'
+
 
 def saturate(x):
     """Shorthand for saturation function."""
@@ -67,11 +74,10 @@ template = {'controller': k_template,
             'parameters': p
             }
 
-# path where the SMT files will be stored
-path = 'e:/docker_connect/data'
-
-# Use dReal and set its specific options
-smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
+# Use dReal
+smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01,
+               'dReal_path': dReal_path  # Path of dReal. Only for Mac/Linux
+               }
 
 options = {'variables': var_list,  # List of symbolic states
            'inputs': input_list,  # List of symbolic inputs
@@ -87,7 +93,7 @@ options = {'variables': var_list,  # List of symbolic states
            'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
            'smt_options': smt_options,  # SMT solver options
            'epsilon': 0.1,  # Robustness buffer for the sample-based fitness
-           'max_iterations': 100
+           'max_iterations': 20
            }
 
 # Initiate the specification

@@ -7,6 +7,7 @@ Simple  example.
 import sympy as sp
 from f4cs.specifications.reach_while_stay import RWS
 from f4cs.synthesis import TBS
+from f4cs.plotting import plotting
 
 # Define state and input variables
 var_list = x1, x2 = sp.symbols('x1,x2')
@@ -16,9 +17,9 @@ input_list = u1, = sp.symbols('u1,')
 f_sym = sp.Matrix([x2, u1])  # Column vector
 
 # RWS specification
-Slist = [[-15, 15], [-15, 15]]
-Ilist = [[-5, 5], [-5, 5]]
-Olist = [[-1, 1], [-1, 1]]
+S_list = [[-15, 15], [-15, 15]]
+I_list = [[-5, 5], [-5, 5]]
+O_list = [[-0.5, 0.5], [-0.5, 0.5]]
 
 # Create a vector of constants for the template, as well as a symbolic variant
 constants = [1, 1, 1, 1, 1, 1]
@@ -39,13 +40,16 @@ template = {'controller': k_template,
 # Use Z3
 smt_options = {'solver': 'Z3'}
 
-options = {'Slist': Slist,  # Interval list of the safe set
-           'Ilist': Ilist,  # Interval list of the initial set
-           'Olist': Olist,  # Interval list of the goal set
-           'number_samples': 100,  # Number of (initial) samples
+options = {'variables': var_list,  # tuple of symbolic variables
+           'inputs': input_list,  # tuple of symbolic inputs
+           'system': f_sym,  # symbolic equations of motion
+           'S_list': S_list,  # Interval list of the safe set
+           'I_list': I_list,  # Interval list of the initial set
+           'O_list': O_list,  # Interval list of the goal set
+           'number_samples': 1000,  # Number of (initial) samples
            # Maximum number of samples (when adding violations)
-           'max_samp': 300,
-           'rdelta': 0.01,  # Inflation of the boundary
+           'max_samples': 1300,
+           'r_delta': 0.01,  # Inflation of the boundary
            'gamma': 0.01,  # (arbitrary) decrease of the LF
            'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
            'smt_options': smt_options,
@@ -53,10 +57,21 @@ options = {'Slist': Slist,  # Interval list of the safe set
            'max_iterations': 30
            }
 # Initialize specification
-spec = RWS(var_list, input_list, f_sym, options)
+spec = RWS(options)
 # Initialize an template-based synthesis procedure.
 synthesiser = TBS(options)
 # Synthesize a solution.
-solution = synthesiser.synthesis(spec, template)
+# solution = synthesiser.synthesis(spec, template)
 
+# Repeated test
+number_runs = 1
+for i in range(number_runs):
+    # Synthesize a solution.
+    solution = synthesiser.synthesis(spec, template)
 
+# Extract controller
+k = solution.k_sym.subs(zip(solution.p, solution.par))
+f_closed_loop = f_sym.subs(zip(input_list, k))
+
+# Plot the result
+plotting(var_list, f_closed_loop, I_list)

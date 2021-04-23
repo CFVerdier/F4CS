@@ -2,13 +2,14 @@
 """
 Created on Mon Mar 29 17:36:11 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
 from setuptools import setup
 
 setup(
     name='f4cs',
+    version='0.1',
     author='Cees Ferdinand Verdier',
     license='LICENSE.md',
     description='A tool for (Formal) Correct-by-Construction Closed-form Controller Synthesis',
@@ -20,5 +21,5 @@ setup(
         'z3-solver',
         'pyibex'
     ],
-    python_requires=">=3.8"
+    python_requires=">=3.7"
 )

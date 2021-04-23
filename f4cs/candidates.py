@@ -2,7 +2,7 @@
 """
 Created on Mon Mar 29 18:24:34 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
 import sympy as sp

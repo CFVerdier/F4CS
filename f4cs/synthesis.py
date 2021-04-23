@@ -2,7 +2,7 @@
 """
 Created on Tue Apr  6 15:54:28 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
 import cma

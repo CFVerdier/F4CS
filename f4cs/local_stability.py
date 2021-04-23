@@ -2,7 +2,7 @@
 """
 Created on Tue Mar 30 21:35:41 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
 import numpy as np
@@ -131,10 +131,9 @@ class LocalStability(Spec):
                            4*sp.cos(x1)*(2.624*x1+1.0516*x2)])
 
         D_list = [[-0.25, 0.25], [-0.25, 0.25]]
+
         smt_options = {'solver': 'Z3'}
 
-        # Use dReal
-        # smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01}
 
         options = {'Dlist': D_list,  # Interval list of the domain
                    'number_samples': 100,  # Number of (initial) samples

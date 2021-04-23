@@ -2,13 +2,12 @@
 """
 Created on Mon Mar 29 18:20:07 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
 import numpy as np
 import sympy as sp
 from . import verification
-# import verification.dReal_communication as dReal
 
 # TODO: initalize with [0]*n creates a n times a copy. This can create odd
 # effects
@@ -65,15 +64,14 @@ class Spec:
         self.input = inputs
         self.options = options
         # Initialize parameters with default values.
-        self.dprecision = self.options.get("dprecision", 0.01)
-        self.number_samples = self.options.get("number_samples", 100)
-        self.max_samples = self.options.get("max_samp", 1000)
+        self.number_samples = self.options.get("number_samples", 10000)
+        self.max_samples = self.options.get("max_samp", 10000)
         # Robustness buffer
-        self.epsilon = self.options.get("epsilon", 0.1)
+        self.epsilon = self.options.get("epsilon", 0)
         # Arbitrary small constant. Default 0.01
         self.c = self.options.get("c", 0.01)
         self.smt_options = self.options.get("smt_options",
-                                            {"solver": 'dReal'})
+                                            {"solver": 'Z3'})
 
         # Select the SMT solver
         smt_solver = self.smt_options.get("solver", 'dReal')

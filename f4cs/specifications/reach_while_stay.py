@@ -1,20 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Apr 18 16:26:26 2021
+Created on Fri Apr 23 17:18:27 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
-import numpy as np
+from .specification import Specification
 import sympy as sp
-from .specifications import Spec
 
-
-class RWSDisturbed(Spec):
+class RWS(Specification):
     """Reach-while-stay specification.
 
     Represents the RWS specification and implements the corresponding
-    fitness function and verification. Subclass of Spec.
+    fitness function and verification. Subclass of Specification.
 
     Arguments
     ---------
@@ -46,15 +44,13 @@ class RWSDisturbed(Spec):
 
     def __init__(self, variables, inputs, f_sym, options):
         # Call the __init__ function of the Spec parent class first.
-        Spec.__init__(self, variables, inputs, f_sym, options)
+        Specification.__init__(self, variables, inputs, f_sym, options)
 
         self._number_conditions = 3  # number of RWS conditions
 
-        S_list = self.options["S_list"]
-        I_list = self.options["I_list"]
-        O_list = self.options["O_list"]
-        aux_list = self.options["auxiliary_list"]
-        self.aux_var = self.options["auxiliary"]
+        S_list = self.options["Slist"]
+        I_list = self.options["Ilist"]
+        O_list = self.options["Olist"]
         # decrease of the LBF. Default 0.01
         self.gamma = self.options.get("gamma", 0.01)
 
@@ -104,25 +100,6 @@ class RWSDisturbed(Spec):
         self.condition_set = (I_set, closed_R_not_S_set, S_not_O_set)
         # TODO: this list containts n copies! change
         self.verification_result = [None] * self._number_conditions
-
-        # TODO: hackish: Overload the system variables and condition sets to
-        # include the auxillary variables
-        aux_data = self.sample_set(aux_list)
-        aux_set = sp.And()
-        for i in range(0, len(self.aux_var)):
-            aux_set = sp.And(
-                aux_set, sp.And(self.aux_var[i] >= aux_list[i][0],
-                                self.aux_var[i] <= aux_list[i][1])
-            )
-
-        new_conditions = [sp.And(condition, aux_set)
-                          for condition in self.condition_set]
-        # Overload system set, variables, and sample sets
-        self.condition_set = tuple(new_conditions)
-        self.var = self.var + self.aux_var
-        for i in range(self._number_conditions):
-            self.data_sets[i] = np.append(self.data_sets[i],
-                                          aux_data, axis=1)
 
     def create_conditions(self, solution):
         """Create the conditions to be verified with an SMT solver."""

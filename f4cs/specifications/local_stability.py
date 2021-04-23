@@ -2,18 +2,21 @@
 """
 Created on Tue Mar 30 21:35:41 2021
 
+EXPERIMENTAL MODULE
+
 @author: Cees F. Verdier
 """
 
 import numpy as np
 import sympy as sp
-from .specifications import Spec
+from .specification import Specification
 import pyibex
 
 # TODO: update to new specification format
 
+print("Warning: this is an experimental module")
 
-class LocalStability(Spec):
+class LocalStability(Specification):
     """Local stability specification.
 
     For general nonlinear systems, this class provides a method to abstract the
@@ -23,7 +26,7 @@ class LocalStability(Spec):
 
     def __init__(self, variables, inputs, f_sym, options):
         # Call the __init__ function of the Spec parent class first.
-        Spec.__init__(self, variables, inputs, f_sym, options)
+        Specification.__init__(self, variables, inputs, f_sym, options)
 
         self._number_conditions = 2  # number of local stability conditions
 

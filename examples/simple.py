@@ -5,7 +5,7 @@ Simple  example.
 @author: Cees F. Verdier
 """
 import sympy as sp
-from f4cs.specifications import RWS
+from f4cs.specifications.reach_while_stay import RWS
 from f4cs.synthesis import TBS
 
 # Define state and input variables

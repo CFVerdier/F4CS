@@ -9,7 +9,7 @@ To use, please revise 'path' and 'dReal_path' for your specific system.
 @author: Cees F. Verdier
 """
 import sympy as sp
-from f4cs.specifications import RWS
+from f4cs.specifications.reach_while_stay import RWS
 from f4cs.synthesis import TBS
 
 # CHANGE TO YOUR SYSTEM PATHS:

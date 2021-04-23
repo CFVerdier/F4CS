@@ -24,7 +24,7 @@ DREAL_VERSION=4.20.12.1 # your dReal version
 ```
 
 ### Windows
-Unfortunately, dReal is build for Linux/Mac. Luckily, dReal is provided as docker image.
+Unfortunately, dReal is built for Linux/Mac. Luckily, dReal is provided as docker image.
 * Install Docker https://hub.docker.com/editions/community/docker-ce-desktop-windows/
 * Open the Windows power shell and run:
     ```
@@ -34,6 +34,11 @@ Unfortunately, dReal is build for Linux/Mac. Luckily, dReal is provided as docke
     If this displays the help of dReal: great, it is working.
 * Create a folder that will be shared with docker: here the SMT files will be written/stored. E.g. the folder that will be shared has the path `D:/docker$\_$connect'.
 
+# Examples
+Example files are included in the `example` folder. For more details, visit the [example wiki](https://github.com/CFVerdier/F4CS/examples)
+
 # Further reading
 For more details, please visit the wiki:
 https://github.com/CFVerdier/F4CS/wiki
+
+

@@ -1,4 +1,9 @@
-"""Demo."""
+"""
+
+Simple  example.
+
+@author: Cees F. Verdier
+"""
 import sympy as sp
 from f4cs.specifications import RWS
 from f4cs.synthesis import TBS
@@ -31,9 +36,6 @@ template = {'controller': k_template,
             'values': constants  # optional. Otherwise, initialized with zeros
             }
 
-# path where the SMT files will be stored
-path = 'e:/docker_connect/data'
-
 # Use Z3
 smt_options = {'solver': 'Z3'}
 
@@ -52,7 +54,6 @@ options = {'Slist': Slist,  # Interval list of the safe set
            }
 # Initialize specification
 spec = RWS(var_list, input_list, f_sym, options)
-
 # Initialize an template-based synthesis procedure.
 synthesiser = TBS(options)
 # Synthesize a solution.

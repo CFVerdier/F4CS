@@ -19,11 +19,10 @@ class PracticalStability(Specification):
     the standard LF conditions hold, where 0 is a set around the equilibrium.
     """
 
-    def __init__(self, variables, inputs, f_sym, options):
+    def __init__(self, options):
         # Call the __init__ function of the Spec parent class first.
-        Specification.__init__(self, variables, inputs, f_sym, options)
-
-        self._number_conditions = 2  # number of local stability conditions
+        number_conditions = 2  # number of local stability conditions
+        Specification.__init__(self, options, number_conditions)
 
         D_list = self.options["Dlist"]
         O_list = self.options["Olist"]
@@ -32,23 +31,15 @@ class PracticalStability(Specification):
 
         # Create sample sets
         D_not_O_data = self.sample_set_complement(D_list, O_list)
-        self.data_sets = [D_not_O_data, D_not_O_data]
+        self.add_data_sets([D_not_O_data, D_not_O_data])
 
         # Create symbolic domains for SMT solver
-        D_set = sp.And()
-        O_set = sp.And()
-        for i in range(0, self.n):
-            D_set = sp.And(
-                D_set, sp.And(self.var[i] >= D_list[i][0],
-                              self.var[i] <= D_list[i][1])
-            )
-            O_set = sp.And(
-                O_set, sp.And(self.var[i] >= O_list[i][0],
-                              self.var[i] <= O_list[i][1])
-            )
+        D_set = self.create_symbolic_interval(self.var, D_list)
+        O_set = self.create_symbolic_interval(self.var, O_list)
+
         D_not_O_set = sp.And(D_set, sp.Not(O_set))
 
-        self.condition_set = (D_not_O_set, D_not_O_set)
+        self.add_condition_sets((D_not_O_set, D_not_O_set))
         self.conditions = None
         self.verification_result = [None] * self._number_conditions
 

@@ -8,6 +8,7 @@ Created on Fri Apr 23 17:18:27 2021
 from .specification import Specification
 import sympy as sp
 
+
 class RWS(Specification):
     """Reach-while-stay specification.
 
@@ -26,9 +27,8 @@ class RWS(Specification):
 
     Required options
     ----------------
-        Slist, Ilist, Olist: a list of the lower and upperbounds of the
+        S_list, I_list, O_list: a list of the lower and upperbounds of the
           safe set, initial set and goal set
-        path: path where the SMT files are stored.
 
     Optional
     --------
@@ -37,67 +37,45 @@ class RWS(Specification):
         gamma:          (Arbitrary) decrease of the LF. Default :0.01,
         c:              (Arbitrary) nonnegative parameter (see manual).
                           Default: 0.01
-        dprecision:     Precision of dReal. Default: 0.01
 
 
     """
 
-    def __init__(self, variables, inputs, f_sym, options):
+    def __init__(self, options):
         # Call the __init__ function of the Spec parent class first.
-        Specification.__init__(self, variables, inputs, f_sym, options)
+        number_conditions = 3  # number of RWS conditions
+        Specification.__init__(self, options, number_conditions)
 
-        self._number_conditions = 3  # number of RWS conditions
-
-        S_list = self.options["Slist"]
-        I_list = self.options["Ilist"]
-        O_list = self.options["Olist"]
+        S_list = self.options["S_list"]
+        I_list = self.options["I_list"]
+        O_list = self.options["O_list"]
         # decrease of the LBF. Default 0.01
         self.gamma = self.options.get("gamma", 0.01)
 
         # Create an inflated safe set to create a conservative boundary set
-        r_delta = self.options.get("rdelta", 0.01)  # Default =0.01
+        r_delta = self.options.get("r_delta", 0.01)  # Default =0.01
         R_list = [
             [S_list[i][0] - r_delta, S_list[i][1] + r_delta]
-            for i in range(0, self.n)
+            for i in range(0, len(S_list))
         ]
 
         # Create sample sets
         I_data = self.sample_set(I_list)
         dS_data = self.sample_set_complement(R_list, S_list)
         S_not_O_data = self.sample_set_complement(S_list, O_list)
-        self.data_sets = [I_data, dS_data, S_not_O_data]
+        self.add_data_sets([I_data, dS_data, S_not_O_data])
 
         # Create symbolic domains for SMT solver
-        S_set = sp.And()
-        R_set = sp.And()
-        I_set = sp.And()
-        O_set = sp.And()
-        for i in range(0, self.n):
-            S_set = sp.And(
-                S_set, sp.And(self.var[i] >= S_list[i][0],
-                              self.var[i] <= S_list[i][1])
-            )
-            I_set = sp.And(
-                I_set, sp.And(self.var[i] >= I_list[i][0],
-                              self.var[i] <= I_list[i][1])
-            )
-            O_set = sp.And(
-                O_set, sp.And(self.var[i] >= O_list[i][0],
-                              self.var[i] <= O_list[i][1])
-            )
-            S_not_O_set = sp.And(S_set, sp.Not(O_set))
-            # Create the closure of R\S to create a conservative boundary of S.
-            R_set = sp.And(
-                R_set, sp.And(self.var[i] >= R_list[i][0],
-                              self.var[i] <= R_list[i][1])
-            )
-            S_open_set = sp.And(
-                S_set, sp.And(self.var[i] > S_list[i][0],
-                              self.var[i] < S_list[i][1])
-            )
-            closed_R_not_S_set = sp.And(R_set, sp.Not(S_open_set))
+        S_set = self.create_symbolic_interval(self.var, S_list)
+        R_set = self.create_symbolic_interval(self.var, R_list)
+        I_set = self.create_symbolic_interval(self.var, I_list)
+        O_set = self.create_symbolic_interval(self.var, O_list)
+        S_open_set = self.create_symbolic_interval(self.var, S_list,
+                                                   open_set=True)
+        S_not_O_set = sp.And(S_set, sp.Not(O_set))
+        closed_R_not_S_set = sp.And(R_set, sp.Not(S_open_set))
+        self.add_condition_sets((I_set, closed_R_not_S_set, S_not_O_set))
 
-        self.condition_set = (I_set, closed_R_not_S_set, S_not_O_set)
         # TODO: this list containts n copies! change
         self.verification_result = [None] * self._number_conditions
 

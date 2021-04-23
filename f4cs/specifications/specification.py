@@ -6,6 +6,7 @@ Created on Mon Mar 29 18:20:07 2021
 """
 
 import numpy as np
+import sympy as sp
 from .. import verification
 
 # TODO: initalize with [0]*n creates a n times a copy. This can create odd
@@ -56,50 +57,55 @@ class Specification:
 
     """
 
-    def __init__(self, variables, inputs, f_sym, options):
+    def __init__(self, options, number_conditions):
+        # Initialize a random generator
+        self.rng = np.random.default_rng()  # Initialize random generator
 
-        self._number_conditions = 1  # number of conditions
-        self.var = variables
-        self.input = inputs
+        self._number_conditions = number_conditions  # number of conditions
         self.options = options
-        # Initialize parameters with default values.
-        self.number_samples = self.options.get("number_samples", 10000)
-        self.max_samples = self.options.get("max_samp", 10000)
+        self.var = options['variables']
+        self.input = options['inputs']
+        self.system = options['system']
+        self.uncertainties = options.get('uncertainties', ())
+
         # Robustness buffer
-        self.epsilon = self.options.get("epsilon", 0)
+        self.epsilon = options.get("epsilon", 0)
         # Arbitrary small constant. Default 0.01
-        self.c = self.options.get("c", 0.01)
-        self.smt_options = self.options.get("smt_options",
-                                            {"solver": 'Z3'})
+        self.c = options.get("c", 0.01)
+
+        # Initialize parameters with default values.
+        self.number_samples = options.get("number_samples", 10000)
+        self.max_samples = options.get("max_samples", 10000)
+
+        # TODO: this list containts n copies! change
+        self._data_sets = [
+            np.array([[]] * self.number_samples)] * self._number_conditions
+        self.condition_sets = (True,)*self._number_conditions
+
+        # If there are uncertanties, extract the corresponding interval
+        if self.uncertainties:
+            self.uncertainty_list = options['uncertainty_list']
+            self.extended_var = self.uncertainties + self.var
+            self.add_disturbances()
+        else:
+            self.extended_var = self.var
 
         # Select the SMT solver
+        self.smt_options = options.get("smt_options",
+                                       {"solver": 'Z3'})
         smt_solver = self.smt_options.get("solver", 'dReal')
         smt_dictionary = {'dReal': verification.Dreal,
                           'Z3': verification.Z3}
         self.verifier = smt_dictionary[smt_solver](self.smt_options)
 
-        # Make functions of the dynamics
-        self.f_sym = f_sym
-
-        self.n = len(self.var)
-        self.m = len(self.input)
-
-        self.condition_set = (True,)
-
         # TODO: this list containts n copies! change
         self.verification_result = [
-            {"sat": False, "violation": [0] * self.n}
+            {"sat": False, "violation": [0] * len(self.extended_var)}
         ] * self._number_conditions
 
-        self.rng = np.random.default_rng()  # Initialize random generator
-
-        # TODO: this list containts n copies! change
-        self.data_sets = [
-            np.array([[0] * self.n] * self.number_samples)
-        ] * self._number_conditions
 
     def sample_set(self, set_list, number_samples=None):
-        """Sample a set defined by a set of interfals."""
+        """Sample a set defined by a set of intervals."""
         # If there is no argument of numpsamp, use atribute
         n = len(set_list)
         if number_samples is None:
@@ -113,18 +119,19 @@ class Specification:
     def sample_set_complement(self, outer_list, inner_list,
                               number_samples=None):
         """Sample a set of the form Outer not(Inner)."""
+        n = len(outer_list)
         # If there is no argument of numpsamp, use atribute
         if number_samples is None:
             number_samples = self.number_samples
         outer_array = np.array(outer_list)
         inner_array = np.array(inner_list)
         samples = (outer_array[:, 1] - outer_array[:, 0]) * self.rng.random(
-            (number_samples, self.n)
+            (number_samples, n)
         ) + outer_array[:, 0]
 
         # Cut out a set
         # select a dimension
-        sdims = self.rng.integers(self.n, size=number_samples)
+        sdims = self.rng.integers(n, size=number_samples)
         # percentage
         perc = 2 * self.rng.random(number_samples) - 1
         for i in range(number_samples):
@@ -154,7 +161,7 @@ class Specification:
         """Compute the sample-based fitness."""
         par = solution.par
 
-        fit_data = [solution.fitness[i](*par, *self.data_sets[i].T)
+        fit_data = [solution.fitness[i](*par, *self._data_sets[i].T)
                     for i in range(self._number_conditions)]
 
         norm_fit_data = np.array(
@@ -165,7 +172,6 @@ class Specification:
 
     def parameter_fitness(self, parameter, solution):
         """Given a parameter vector, compute the sample-based fitness."""
-        # solution.substitute_parameters(parameter)
         # Substitute parameters
         solution.par = parameter
         return -1 * self.sample_fitness(solution)
@@ -180,15 +186,63 @@ class Specification:
             np.sum([int(n["sat"]) for n in self.verification_result])
         ) / self._number_conditions
 
-    # TODO: if we store the sample fitness of a candidate after parameter
-    # optimization
+    # TODO:store the sample fitness of a candidate after parameter optimization
     def fitness(self, solution):
         """Compute the full fitness of a candidate solution."""
         return (self.sample_fitness(solution) + self.SMT_fitness(solution)) / 2
 
+    def create_symbolic_interval(self, variables, set_list, open_set=False):
+        """Create a symbolic interval.
+
+        Given a set of symbolic variables and an list of interval bounds,
+        create a symbolic interval. If the boolean open_set is True, it returns
+        an open interval, otherwise a closed interval.
+
+        """
+        symbolic_set = sp.And()
+        if not open_set:
+            for i, var in enumerate(variables):
+                symbolic_set = sp.And(
+                    symbolic_set, sp.And(var >= set_list[i][0],
+                                         var <= set_list[i][1])
+                )
+        else:
+            for i, var in enumerate(variables):
+                symbolic_set = sp.And(
+                    symbolic_set, sp.And(var > set_list[i][0],
+                                         var < set_list[i][1])
+                )
+        return symbolic_set
+
     def create_conditions(self, solution):
         """Create the conditions to be verified with an SMT solver."""
-        return (True,)
+        return (True,)*self._number_conditions
+
+    def add_disturbances(self):
+        """Add disturbances.
+
+        prepends specification sets with disturbances.
+        """
+
+        aux_data = self.sample_set(self.uncertainty_list)
+        aux_set = self.create_symbolic_interval(self.uncertainties,
+                                                self.uncertainty_list)
+        # Overload system set, and sample sets
+        self.add_condition_sets([aux_set]*self._number_conditions)
+        self.add_data_sets([aux_data]*self._number_conditions)
+
+    def add_condition_sets(self, condition_sets):
+        """Add conditions to the specification."""
+        self.condition_sets = tuple(
+            [sp.And(condition, condition_sets[i])
+             for i, condition in enumerate(self.condition_sets)]
+        )
+
+    def add_data_sets(self, new_data_sets):
+        """Add data sets to the specification."""
+        for i in range(self._number_conditions):
+            self._data_sets[i] = np.append(self._data_sets[i],
+                                           new_data_sets[i], axis=1)
 
     def verify(self, solution):
         """Verify the specification using an SMT solver."""
@@ -202,16 +256,16 @@ class Specification:
                 self.verifier.file_name = "con{}".format(i + 1)
             self.verification_result[i] = self.verifier.verify(
                 solution.conditions[i],
-                self.condition_set[i],
-                self.var
+                self.condition_sets[i],
+                self.extended_var
             )
             # If there is a counter example, sample the data and append.
             if isinstance(self.verification_result[i]["violation"], tuple):
-                self.data_sets[i] = np.append(
-                    self.data_sets[i],
+                self._data_sets[i] = np.append(
+                    self._data_sets[i],
                     [self.verification_result[i]["violation"]],
                     axis=0,
                 )
                 # Saturate w.r.t. the maximum number of samples. (FIFO)
-                if len(self.data_sets[i]) > self.max_samples:
-                    self.data_sets[i] = self.data_sets[i][-self.max_samples:]
+                if len(self._data_sets[i]) > self.max_samples:
+                    self._data_sets[i] = self._data_sets[i][-self.max_samples:]

@@ -20,11 +20,10 @@ class Stability(Specification):
     For nonpolynomial systems, see local_stability
     """
 
-    def __init__(self, variables, inputs, f_sym, options):
+    def __init__(self, options):
         # Call the __init__ function of the Spec parent class first.
-        Specification.__init__(self, variables, inputs, f_sym, options)
-
-        self._number_conditions = 2  # number of local stability conditions
+        number_conditions = 2  # number of local stability conditions
+        Specification.__init__(self, options, number_conditions)
 
         D_list = self.options["Dlist"]
         self.x0 = self.options.get('x0', sp.zeros(self.n, 1))
@@ -35,17 +34,12 @@ class Stability(Specification):
 
         # Create sample sets
         D_data = self.sample_set(D_list)
-        self.data_sets = [D_data, D_data]
+        self.add_data_sets([D_data, D_data])
 
         # Create symbolic domains for SMT solver
-        D_set = sp.And()
-        for i in range(0, self.n):
-            D_set = sp.And(
-                D_set, sp.And(self.var[i] >= D_list[i][0],
-                              self.var[i] <= D_list[i][1])
-            )
+        D_set = self.create_symbolic_interval(self.var, D_list)
 
-        self.condition_set = (D_set, D_set)
+        self.add_condition_sets((D_set, D_set))
         self.conditions = None
         self.verification_result = [None] * self._number_conditions
 

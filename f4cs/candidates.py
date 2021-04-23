@@ -44,14 +44,6 @@ class Solution:
     """
 
     def __init__(self, S, template={}):
-        # TODO: variable in the entities that it can has: LF, controller,
-        # auxillary functions
-        # if isinstance(S, RWS):  # Check if it is a RWS spec.
-        # TODO replace with e.g. a dictionary to switch modes
-        # HARDCODED CONTROLLER AND CLBF
-        # self.par = [-1, -2, -78]
-
-        print(S)
         self.spec = S
 
         self.p = template.get('parameters', 0)
@@ -59,14 +51,13 @@ class Solution:
         self.par = template.get('values', np.zeros(self.par_len))
         # TODO: give a nice template (linear and quadratic),
         # if none is supplied
-        self.k_sym = template.get('controller', sp.zeros(self.spec.n, 1))
+        self.k_sym = template.get(
+            'controller', sp.zeros(len(self.spec.input), 1))
         self.V_sym = template.get('certificate', 0)
 
-        # self.dV_sym = sp.diff(self.V_sym, [self.spec.var])
-        # TODO: hack around auxillary variables
-        self.dV_sym = sp.diff(self.V_sym, [self.spec.var[:self.spec.n]])
+        self.dV_sym = sp.diff(self.V_sym, [self.spec.var])
         self.dtV_sym = sp.Matrix(self.dV_sym).dot(
-            self.spec.f_sym).subs(zip(self.spec.input, self.k_sym))
+            self.spec.system).subs(zip(self.spec.input, self.k_sym))
         self.dV_sym = None
         self.dVfun = None
 
@@ -111,7 +102,7 @@ class Solution:
             f = sp.Min(f, 0.0)
             # Concatinate to result tuple
             function = sp.lambdify(
-                self.p + self.spec.var, f,
+                self.p + self.spec.extended_var, f,
                 modules=[{'amax': custom_amax, 'amin': custom_amin}, "numpy"])
             result = result + (function,)
         self.fitness = result

@@ -12,6 +12,8 @@ This will automatically install the required packages. When considering non-poly
 ## Install dReal 
 Verification of the LF-like conditions is done using an SMT solver. In the case of non-polynomial conditions, our tool relies on the SMT solver dReal. The installation guide of dReal 4 can be found [here](https://github.com/dreal/dreal4}{https://github.com/dreal/dreal4).
 
+To use dReal in our tool, some system specific paths need to be set. See the [wiki](https://github.com/CFVerdier/F4CS/wiki/SMT-solvers) for more information.
+
 ### Ubuntu / Mac
 Currently, we do not support the Python API for dReal. Instead, it is required that dReal is installed on the desktop. Please follow the installation guide as mentioned before. 
 

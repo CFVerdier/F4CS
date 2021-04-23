@@ -32,3 +32,6 @@ Unfortunately, dReal is build for Linux/Mac. Luckily, dReal is provided as docke
     If this displays the help of dReal: great, it is working.
 * Create a folder that will be shared with docker: here the SMT files will be written/stored. E.g. the folder that will be shared has the path `D:/docker$\_$connect'.
 
+# Further reading
+For more details, please visit the wiki:
+https://github.com/CFVerdier/F4CS/wiki

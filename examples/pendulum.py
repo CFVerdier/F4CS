@@ -9,8 +9,9 @@ To use, please revise 'path' and 'dReal_path' for your specific system.
 @author: Cees F. Verdier
 """
 import sympy as sp
-from f4cs.specifications import RWS
+from f4cs.specifications.reach_while_stay import RWS
 from f4cs.synthesis import TBS
+from f4cs.plotting import plotting
 
 # CHANGE TO YOUR SYSTEM PATHS:
 
@@ -26,9 +27,9 @@ input_list = u1, = sp.symbols('u1,')
 # Define your Dynamics
 f_sym = sp.Matrix([x2, 19.6*sp.sin(x1)-16*x2+4*sp.cos(x1)*u1])
 
-Slist = [[-6, 6], [-10, 10]]
-Ilist = [[-0.5, 0.5], [-0.5, 0.5]]
-Olist = [[-0.25, 0.25], [-0.25, 0.25]]
+S_list = [[-6, 6], [-10, 10]]
+I_list = [[-0.5, 0.5], [-0.5, 0.5]]
+O_list = [[-0.05, 0.05], [-0.05, 0.05]]
 
 # Create a vector of constants for the template, as well as a symbolic variant
 constants = [1, 1, 1, 1, 1, 1]
@@ -51,13 +52,16 @@ smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01,
                'dReal_path': dReal_path  # Path of dReal. Only for Mac/Linux
                }
 
-options = {'Slist': Slist,  # Interval list of the safe set
-           'Ilist': Ilist,  # Interval list of the initial set
-           'Olist': Olist,  # Interval list of the goal set
+options = {'variables': var_list,  # tuple of symbolic variables
+           'inputs': input_list,  # tuple of symbolic inputs
+           'system': f_sym,  # symbolic equations of motion
+           'S_list': S_list,  # Interval list of the safe set
+           'I_list': I_list,  # Interval list of the initial set
+           'O_list': O_list,  # Interval list of the goal set
            'number_samples': 10000,  # Number of (initial) samples
            # Maximum number of samples (when adding violations)
-           'max_samp': 13000,
-           'rdelta': 0.01,  # Inflation of the boundary
+           'max_samples': 13000,
+           'r_delta': 0.01,  # Inflation of the boundary
            'gamma': 0.01,  # (arbitrary) decrease of the LF
            'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
            'smt_options': smt_options,
@@ -65,9 +69,15 @@ options = {'Slist': Slist,  # Interval list of the safe set
            'max_iterations': 30
            }
 # Initialize specification
-spec = RWS(var_list, input_list, f_sym, options)
+spec = RWS(options)
 # Initialize an template-based synthesis procedure.
 synthesiser = TBS(options)
 # Synthesize a solution.
-
 solution = synthesiser.synthesis(spec, template)
+
+# Extract controller
+k = solution.k_sym.subs(zip(solution.p, solution.par))
+f_closed_loop = f_sym.subs(zip(input_list, k))
+
+# Plot the result
+plotting(var_list, f_closed_loop, I_list, t_max=5)

@@ -2,7 +2,7 @@
 """
 Created on Thu Apr  1 13:46:24 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
 import numpy as np

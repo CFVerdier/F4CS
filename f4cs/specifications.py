@@ -2,13 +2,12 @@
 """
 Created on Mon Mar 29 18:20:07 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
 import numpy as np
 import sympy as sp
 from . import verification
-# import verification.dReal_communication as dReal
 
 # TODO: initalize with [0]*n creates a n times a copy. This can create odd
 # effects

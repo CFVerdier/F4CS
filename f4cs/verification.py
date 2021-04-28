@@ -92,6 +92,7 @@ class Verification:
         """
         # Write settings in a string
         string = ""
+        # Specific dReal settings
         if self.solver == 'dReal':
             string = "(set-logic QF_NRA)\n"
             string = string + "(set-info :precision " + \
@@ -120,7 +121,7 @@ class Dreal(Verification):
     Class the SMT solver dReal
 
     Options:
-        dreal_precision: precision used in dReal. Default:"0.001"
+        dReal_precision: precision used in dReal. Default:"0.001"
         t_max: maximum time for dReal to run. Terminated if surpassed. Default:
             None.
     """
@@ -129,8 +130,8 @@ class Dreal(Verification):
         Verification.__init__(self, options)
         self.solver = "dReal"
         self.path = self.options['path']
-        self.dreal_precision = self.options.get("dreal_precision", 0.001)
-        self.t_max = self.options.get("dreal_precision", None)
+        self.dreal_precision = self.options.get("dReal_precision", 0.001)
+        self.t_max = self.options.get('t_max', None)
         self.file_name = self.options.get("file_name", "file.smt2")
 
         # Check for unix-based OSes whether the dReal path is supplied
@@ -154,17 +155,12 @@ class Dreal(Verification):
         # Initialize results
         result = {}
         print("Calling dReal")
-        try:
-            # dReal call, OS specific
-            outputdReal = call_dReal(self)
-        except Exception:
-            outputdReal = 'time-out'
-            result['time-out'] = True
-            print("dReal time-out ({} seconds"
-                  " or other unexpected result.)".format(self.t_max))
+        # dReal call, OS specific
+        outputdReal = call_dReal(self)
         # Process data: unsat = 1, delta-sat = 0 (unsat proofs the inequality)
         if outputdReal == 'time-out':
             result['sat'] = False
+            result['time-out'] = True
             result['violation'] = None
         elif outputdReal == 'unsat\n':
             result['sat'] = True

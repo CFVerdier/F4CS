@@ -34,8 +34,6 @@ def saturate(x):
 var_list = x1, x2, x3 = sp.symbols('x1,x2,x3')
 input_list = u1, u2, u3 = sp.symbols('u1, u2, u3')
 dist_var = w1, w2, w3 = sp.symbols('w1, w2, w3')
-n = len(var_list)
-m = len(input_list)
 
 # Matrix/vector form.
 x = sp.Matrix(var_list)
@@ -61,6 +59,8 @@ O_list = [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
 Omega_list = [[-0.01, 0.01], [-0.01, 0.01], [-0.01, 0.01]]
 
 # Assuming a quadratic LF and linear controller,
+n = len(var_list)
+m = len(input_list)
 p = sp.symbols('p0:{}'.format(n**2+n*m+1))
 K = sp.Matrix(p[0:n*m]).reshape(m, n)
 Q = sp.Matrix(p[n*m:n**2+n*m]).reshape(n, n)
@@ -75,8 +75,9 @@ template = {'controller': k_template,
             }
 
 # Use dReal
-smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01,
-               'dReal_path': dReal_path  # Path of dReal. Only for Mac/Linux
+smt_options = {'solver': 'dReal', 'path': path, 'dReal_precision': 0.001,
+               'dReal_path': dReal_path,  # Path of dReal. Only for Mac/Linux
+               't_max': 20  # Maximum time the SMT solver is running
                }
 
 options = {'variables': var_list,  # List of symbolic states
@@ -93,7 +94,7 @@ options = {'variables': var_list,  # List of symbolic states
            'c': 0.01,  # (arbitrary) nonnegative parameter (see manual)
            'smt_options': smt_options,  # SMT solver options
            'epsilon': 0.1,  # Robustness buffer for the sample-based fitness
-           'max_iterations': 20
+           'max_iterations': 20,
            }
 
 # Initiate the specification

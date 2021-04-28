@@ -48,8 +48,9 @@ template = {'controller': k_template,
             }
 
 # Use dReal
-smt_options = {'solver': 'dReal', 'path': path, 'dprecision': 0.01,
-               'dReal_path': dReal_path  # Path of dReal. Only for Mac/Linux
+smt_options = {'solver': 'dReal', 'path': path, 'dReal_precision': 0.001,
+               'dReal_path': dReal_path,  # Path of dReal. Only for Mac/Linux,
+               't_max': None  # Maximum time the SMT solver is running
                }
 
 options = {'variables': var_list,  # tuple of symbolic variables

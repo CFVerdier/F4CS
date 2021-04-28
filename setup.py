@@ -12,14 +12,16 @@ setup(
     version='0.1',
     author='Cees Ferdinand Verdier',
     license='LICENSE.md',
-    description='A tool for (Formal) Correct-by-Construction Closed-form Controller Synthesis',
+    description=('A tool for (Formal) Correct-by-Construction Closed-form '
+                 'Controller Synthesis'),
     long_description=open('README.md').read(),
     install_requires=[
         'numpy',
         'sympy',
         'cma',
         'z3-solver',
-        'pyibex'
+        'pyibex',
+        'docker ; platform_system=="Windows"'
     ],
     python_requires=">=3.7"
 )

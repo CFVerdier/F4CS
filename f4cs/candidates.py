@@ -2,7 +2,7 @@
 """
 Created on Mon Mar 29 18:24:34 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
 import sympy as sp
@@ -43,32 +43,21 @@ class Solution:
         TODO
     """
 
-    def __init__(self, S):
-        # TODO: variable in the entities that it can has: LF, controller,
-        # auxillary functions
-        # if isinstance(S, RWS):  # Check if it is a RWS spec.
-        # TODO replace with e.g. a dictionary to switch modes
-        # HARDCODED CONTROLLER AND CLBF
-        # self.par = [-1, -2, -78]
-
-        print(S)
+    def __init__(self, S, template={}):
         self.spec = S
 
-        self.par = [1, 1, 1, 1, 1, 1]
-        self.par_len = len(self.par)
-        self.p = sp.symbols('p0:{}'.format(self.par_len))
-        p = self.p
-        x = self.spec.var
-        self.k_sym_p = sp.Array([p[0]*x[0]+p[1]*x[1]])
-        self.V_sym_p = p[2]*x[0]**2+p[3]*x[1]**2+p[4]*x[0]*x[1]+p[5]
+        self.p = template.get('parameters', 0)
+        self.par_len = len(self.p)
+        self.par = template.get('values', np.zeros(self.par_len))
+        # TODO: give a nice template (linear and quadratic),
+        # if none is supplied
+        self.k_sym = template.get(
+            'controller', sp.zeros(len(self.spec.input), 1))
+        self.V_sym = template.get('certificate', 0)
 
-        self.k_sym = self.k_sym_p
-        self.V_sym = self.V_sym_p
-        # self.dV_sym = sp.diff(self.V_sym, [self.spec.var])
-        # TODO: hack around auxillary variables
-        self.dV_sym = sp.diff(self.V_sym, [self.spec.var[:self.spec.n]])
+        self.dV_sym = sp.diff(self.V_sym, [self.spec.var])
         self.dtV_sym = sp.Matrix(self.dV_sym).dot(
-            self.spec.f_sym).subs(zip(self.spec.input, self.k_sym))
+            self.spec.system).subs(zip(self.spec.input, self.k_sym))
         self.dV_sym = None
         self.dVfun = None
 
@@ -113,7 +102,7 @@ class Solution:
             f = sp.Min(f, 0.0)
             # Concatinate to result tuple
             function = sp.lambdify(
-                self.p + self.spec.var, f,
+                self.p + self.spec.extended_var, f,
                 modules=[{'amax': custom_amax, 'amin': custom_amin}, "numpy"])
             result = result + (function,)
         self.fitness = result

@@ -2,7 +2,7 @@
 """
 Created on Thu Apr  1 13:46:24 2021
 
-@author: ceesv
+@author: Cees F. Verdier
 """
 
 import numpy as np
@@ -12,9 +12,9 @@ import platform
 import z3
 
 if platform.system() == 'Windows':
-    from os_support._windows_support import call_dReal
+    from .os_support._windows_support import call_dReal
 elif (platform.system() == 'Linux') or (platform.system() == 'Darwin'):
-    from ._unix_support import call_dReal
+    from .os_support._unix_support import call_dReal
 else:
     raise ImportError("The verification method does not support this OS")
 
@@ -40,6 +40,7 @@ class Verification:
                                                  "Or": "or",
                                                  "Not": "not",
                                                  "Max": "max",
+                                                 "Min": "min",
                                                  "Abs": "abs",
                                                  "Unequality": "!",
                                                  "Equality": "="})
@@ -63,10 +64,13 @@ class Verification:
         """Translate function from symbolic python to SMT2 expressions."""
         name = expr.func.__name__
         if name in self.num_dict:
+            # for rational we must convert to numerical value
+            if name == "Rational" or name == "Half":
+                expr = float(expr)
             sform = str(expr)
         elif name in self.sym_dict_exceptions:
             sform = "(" + self.symbolic_name_to_lisp(name)
-            sform = sform + " " + self.ymbolic_to_lisp(expr.args[0])
+            sform = sform + " " + self.symbolic_to_lisp(expr.args[0])
             for arg in expr.args[1:-1]:
                 sform = sform + " (" + self.symbolic_name_to_lisp(name) + \
                     " " + self.symbolic_to_lisp(arg)
@@ -88,6 +92,7 @@ class Verification:
         """
         # Write settings in a string
         string = ""
+        # Specific dReal settings
         if self.solver == 'dReal':
             string = "(set-logic QF_NRA)\n"
             string = string + "(set-info :precision " + \
@@ -116,7 +121,7 @@ class Dreal(Verification):
     Class the SMT solver dReal
 
     Options:
-        dreal_precision: precision used in dReal. Default:"0.001"
+        dReal_precision: precision used in dReal. Default:"0.001"
         t_max: maximum time for dReal to run. Terminated if surpassed. Default:
             None.
     """
@@ -125,8 +130,8 @@ class Dreal(Verification):
         Verification.__init__(self, options)
         self.solver = "dReal"
         self.path = self.options['path']
-        self.dreal_precision = self.options.get("dreal_precision", 0.001)
-        self.t_max = self.options.get("dreal_precision", None)
+        self.dreal_precision = self.options.get("dReal_precision", 0.001)
+        self.t_max = self.options.get('t_max', None)
         self.file_name = self.options.get("file_name", "file.smt2")
 
         # Check for unix-based OSes whether the dReal path is supplied
@@ -150,17 +155,12 @@ class Dreal(Verification):
         # Initialize results
         result = {}
         print("Calling dReal")
-        try:
-            # dReal call, OS specific
-            outputdReal = call_dReal(self)
-        except Exception:
-            outputdReal = 'time-out'
-            result['time-out'] = True
-            print("dReal time-out ({} seconds"
-                  " or other unexpected result.)".format(self.t_max))
+        # dReal call, OS specific
+        outputdReal = call_dReal(self)
         # Process data: unsat = 1, delta-sat = 0 (unsat proofs the inequality)
         if outputdReal == 'time-out':
             result['sat'] = False
+            result['time-out'] = True
             result['violation'] = None
         elif outputdReal == 'unsat\n':
             result['sat'] = True

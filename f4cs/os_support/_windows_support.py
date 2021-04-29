@@ -5,29 +5,28 @@ Created on Tue Apr  6 12:59:31 2021
 @author: ceesv
 """
 
-import subprocess
+import docker
 
 
-def call_dReal(specification):
+def call_dReal(verifier):
     """Call dReal.
 
     OS specific
     """
-    if specification.t_max is None:
-        outputdReal = subprocess.check_output(
-            ['powershell.exe',
-             "docker run -v " + specification.path
-             + ":/data --rm dreal/dreal4 dreal data/" + specification.file_name
-             + " --model"],
-            shell=True, stderr=subprocess.STDOUT).decode("utf-8")
-    else:
-        outputdReal = subprocess.check_output(
-            ['powershell.exe',
-             "docker run -v " + specification.path
-             + ":/data --rm dreal/dreal4 dreal data/" + specification.file_name
-             + " --model"],
-            shell=True,
-            stderr=subprocess.STDOUT,
-            timeout=specification.t_max).decode("utf-8")
+    path = verifier.path
+    file = verifier.file_name
+    client = docker.from_env()
+    volume_dict = {path: {'bind': '/data', 'mode': 'ro'}}
+    container = client.containers.run("dreal/dreal4",
+                                      " dreal data/" + file + " --model",
+                                      volumes=volume_dict,
+                                      detach=True)
+    if verifier.t_max is not None:
+        container.stop(timeout=verifier.t_max)
+    outputdReal = container.logs().decode("utf-8")
+    container.remove()
+    if outputdReal == '':
+        print("dReal time out: {}".format(verifier.t_max))
+        outputdReal = 'time-out'
 
     return outputdReal

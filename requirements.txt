@@ -1,0 +1,6 @@
+numpy
+sympy
+cma
+z3-solver
+pyibex
+docker

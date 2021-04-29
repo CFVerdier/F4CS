@@ -103,7 +103,6 @@ class Specification:
             {"sat": False, "violation": [0] * len(self.extended_var)}
         ] * self._number_conditions
 
-
     def sample_set(self, set_list, number_samples=None):
         """Sample a set defined by a set of intervals."""
         # If there is no argument of numpsamp, use atribute

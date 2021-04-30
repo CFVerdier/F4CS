@@ -6,7 +6,8 @@ Simple  example.
 """
 import sympy as sp
 from f4cs.specifications.reach_while_stay import RWS
-from f4cs.synthesis import TBS
+from f4cs.synthesis.template_based_synthesis import (
+    TemplateBasedSynthesis as TBS)
 from f4cs.plotting import plotting
 
 # Define state and input variables

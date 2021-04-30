@@ -13,7 +13,8 @@ To use, please revise 'path' and 'dReal_path' for your specific system.
 import sympy as sp
 import numpy as np
 from f4cs.specifications.reach_while_stay import RWS
-from f4cs.synthesis import TBS
+from f4cs.synthesis.template_based_synthesis import (
+    TemplateBasedSynthesis as TBS)
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 

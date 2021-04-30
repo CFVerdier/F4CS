@@ -1,31 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Apr  6 15:54:28 2021
+Created on Fri Apr 30 23:07:46 2021
 
 @author: Cees F. Verdier
 """
 
+from .synthesis import Synthesis
+from ..candidates import Solution
 import cma
-from .candidates import Solution
 import time
 
 
-class Synthesis:
-    """Main synthesis class."""
-
-    def __init__(self, options={}):
-        self.issolution = False
-        self.mode = options.get('mode', 'template-based')
-        self.max_iterations = options.get('max_iterations', 10)
-        self.iteration = None
-        self.synthesis_time = None
-        # Store past number of iterations and synthesis time. Useful for
-        # logging past experiments
-        self.iterations = []
-        self.synthesis_times = []
-
-
-class TBS(Synthesis):
+class TemplateBasedSynthesis(Synthesis):
     """Template-based synthesis."""
 
     def __init__(self, options={}):

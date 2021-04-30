@@ -10,7 +10,8 @@ To use, please revise 'path' and 'dReal_path' for your specific system.
 """
 import sympy as sp
 from f4cs.specifications.reach_while_stay import RWS
-from f4cs.synthesis import TBS
+from f4cs.synthesis.template_based_synthesis import (
+    TemplateBasedSynthesis as TBS)
 from f4cs.plotting import plotting
 
 # CHANGE TO YOUR SYSTEM PATHS:

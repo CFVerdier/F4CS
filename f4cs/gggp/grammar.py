@@ -13,11 +13,12 @@ import copy
 class Grammar:
     """Grammar class."""
 
-    def __init__(self, P, PT, start):
+    def __init__(self, start, P, PT, PC={'const': 'Real(-1,1)'}):
+        self.start = sp.sympify(start, evaluate=False)  # Starting tree
         self.nonterminals = tuple(P.keys())  # nonterminals
         self.P = P  # Production rules
-        self.PT = PT  # terminal rules
-        self.start = sp.sympify(start, evaluate=False)  # Starting tree
+        self.PT = PT  # Terminal Production rules (no recursion)
+        self.PC = PC  # Production rules of constants
 
 
 class GrammarTree:
@@ -28,10 +29,14 @@ class GrammarTree:
         self._tree = None
         self._positions = None
         self._phenotype = None
-        self._template = {}
         self.rng = np.random.default_rng()  # Initialize random generator
         self.set_tree(self.grammar.start)
         self.grow_tree(max_depth)
+
+        # Parameters set when constructing a template
+        self.values = None
+        self.parameters = None
+        self.symbolic_tree = None
 
     def __repr__(self):
         return str(self._tree)
@@ -44,7 +49,6 @@ class GrammarTree:
         self._tree = sp.sympify(new_tree, evaluate=False)
         self._positions = self.create_position_dictionary()
         self._phenotype = self.create_phenotype()
-        self._template = self.create_template()
 
     def get_tree(self):
         """Getter for the tree attribute"""
@@ -73,7 +77,7 @@ class GrammarTree:
 
     def unfold(self, production_rules):
         """Unfold one iteration of nonterminals"""
-        nonterminals = self.grammar.nonterminals
+        nonterminals = tuple(production_rules.keys())
         all_positions = [self.get_position(nonterminal)
                          for nonterminal in nonterminals]
         for i, nonterminal in enumerate(nonterminals):
@@ -89,7 +93,10 @@ class GrammarTree:
 
     def realize_constants(self):
         """Realize constants within a grammar."""
-        positions = self.get_position(sp.Function('C'))
+        # Unfold constants
+        self.unfold(self.grammar.PC)
+        # Initialize the values, based on its bounds
+        positions = self.get_position(sp.Function('Real'))
         for position in positions:
             bounds = self._positions[position].args
             value = self.rng.uniform(*bounds)
@@ -98,7 +105,9 @@ class GrammarTree:
     def create_phenotype(self):
         """Obtain the phenotype/function form."""
         phenotype = self.get_tree()
-        for nonterminal in self.grammar.nonterminals:
+        nonterminals = self.grammar.nonterminals + \
+            tuple(self.grammar.PC.keys())
+        for nonterminal in nonterminals:
             function = sp.Function('{}'.format(nonterminal.capitalize()))
             phenotype = phenotype.replace(function, lambda x: x)
         return phenotype
@@ -186,38 +195,59 @@ class GrammarTree:
         template = {}
         positions = tree.get_position(sp.Function('Const'))
         number_parameters = len(positions)
-        parameters = sp.symbols('p0:{}'.format(number_parameters))
-        template['parameters'] = parameters
-        template['values'] = [tree._positions[position].args[0]
-                              for position in positions]
+        self.parameters = sp.symbols('p0:{}'.format(number_parameters))
+        self.values = [tree._positions[position].args[0]
+                       for position in positions]
+        template['parameters'] = self.parameters
+        template['values'] = self.values
+        # Create the symbolic tree
         for i, position in enumerate(positions):
-            tree.replace(position, parameters[i])
+            tree.replace(position, self.parameters[i])
         phenotype = tree.create_phenotype()
         template['certificate'] = phenotype[0]
         template['controller'] = phenotype[1]
+        self.symbolic_tree = tree
         return template
+
+    def substitute_values(self, values):
+        """Substitute new parameters into the tree"""
+        new_tree = self.symbolic_tree.get_tree()
+        # Substitute parameters
+        new_tree = new_tree.subs(zip(self.parameters, values))
+        self.set_tree(new_tree)
 
 
 # Production rules
 P = {'pol': ('pol+pol', 'const*mon'),
      'mon': ('mon*mon', 'vars'),
-     'vars': ('x1', 'x2'),
-     'const': ('C(-1,1)',)
+     'vars': ('x1', 'x2')
      }
 P_terminal = {'pol': ('const*mon',),
               'mon': ('vars',),
-              'vars': ('x1', 'x2'),
-              'const': ('C(-1,1)',)
+              'vars': ('x1', 'x2')
               }
+# Special production rules for constants
+P_constants = {'const': ('Real(-1,1)',)}
 
 start = ('pol+const', 'mon')
-grammar = Grammar(P, P_terminal, start)
+grammar = Grammar(start, P, P_terminal, P_constants)
 max_depth = 3
 t1 = GrammarTree(grammar, 3)
 t2 = GrammarTree(grammar, 3)
 
 print(str(t1))
 print(str(t2))
+
+# Create a template that can be used in the Solution class.
+template_t1 = t1.create_template()
+# Update parameters (e.g. through optimization)
+template_t1['values'][0] = 10
+# Substitute back into tree
+t1.substitute_values(template_t1['values'])
+
+print(str(t1))
+
+# TODO: migrate to GGGP file.
 
 
 def select_operator_point(tree, positions):
@@ -226,66 +256,74 @@ def select_operator_point(tree, positions):
     return positions[index]
 
 
+def find_position_gene(tree, function, gene_int):
+    """find the positions of a function on a certain gene"""
+    positions = tree.get_position(function)
+    return list(filter(lambda x: x[0] == gene_int, positions))
+
+
+# TODO: use a mution/crossover rate PER gene.
+
 def crossover(tree_1, tree_2):
     """Crossover operator."""
     # Find matching nonterminals
     t1 = copy.copy(tree_1)
     t2 = copy.copy(tree_2)
+    # Make this an attribute
+    number_genes = len(t1.get_tree())
     # TODO: use the grammar of GGGP
-    nonterminals = t1.grammar.nonterminals
-    number_nonterminals = len(nonterminals)
-    positions_1 = [0]*number_nonterminals
-    positions_2 = [0]*number_nonterminals
-    overlap_indices = []
-    for i, nonterminal in enumerate(nonterminals):
-        function = sp.Function(nonterminal.capitalize())
-        positions_1[i] = t1.get_position(function)
-        positions_2[i] = t2.get_position(function)
-        # Check if there is an overlap
-        if all([positions_1[i], positions_2[i]]):
-            overlap_indices.append(i)
-    if any(overlap_indices):
-        nonterminal_choice = t1.rng.choice(overlap_indices)
-        point_1 = select_operator_point(t1, positions_1[nonterminal_choice])
-        point_2 = select_operator_point(t2, positions_2[nonterminal_choice])
-        subtree = t2._positions[point_2]
-        print(subtree)
-        t1.replace(point_1, subtree)
+    for gene_index in range(0, number_genes):
+        nonterminals = t1.grammar.nonterminals
+        number_nonterminals = len(nonterminals)
+        positions_1 = [0]*number_nonterminals
+        positions_2 = [0]*number_nonterminals
+        overlap_indices = []
+        for i, nonterminal in enumerate(nonterminals):
+            function = sp.Function(nonterminal.capitalize())
+            positions_1[i] = find_position_gene(t1, function, gene_index)
+            positions_2[i] = find_position_gene(t2, function, gene_index)
+            # Check if there is an overlap
+            if all([positions_1[i], positions_2[i]]):
+                overlap_indices.append(i)
+        if any(overlap_indices):
+            nonterminal_choice = t1.rng.choice(overlap_indices)
+            point_1 = select_operator_point(
+                t1, positions_1[nonterminal_choice])
+            point_2 = select_operator_point(
+                t2, positions_2[nonterminal_choice])
+            subtree = t2._positions[point_2]
+            t1.replace(point_1, subtree)
     return t1
 
 
-# def mutation(tree, max_depth):
-#     """Mutation operator."""
-#     t = copy.copy(tree)
-#     # TODO: use the grammar of GGGP
-#     nonterminals = t.grammar.nonterminals
-#     number_nonterminals = len(nonterminals)
-#     positions = [0]*number_nonterminals
-#     # Find which nonterminals are present
-#     present_indices = []
-#     for i, nonterminal in enumerate(nonterminals):
-#         function = sp.Function(nonterminal.capitalize())
-#         positions[i] = t.get_position(function)
-#         if positions[i]:
-#             present_indices.append(i)
-#     if any(present_indices):
-#         nonterminal_choice = t.rng.choice(present_indices)
-#         point = select_operator_point(t, positions[nonterminal_choice])
-#         grammar = copy.copy(t.grammar)
-#         grammar.start = str(t.grammar.nonterminals[nonterminal_choice])
-#         print(grammar.start)
-#         subtree = GrammarTree(grammar, max_depth)
-#         print(subtree)
-#         t.replace(point, subtree.get_tree())
-
-#     return t
+def mutation(tree, max_depth):
+    """Mutation operator."""
+    t = copy.copy(tree)
+    # TODO: use the grammar of GGGP
+    nonterminals = t.grammar.nonterminals
+    number_nonterminals = len(nonterminals)
+    # Make this an attribute
+    number_genes = len(t1.get_tree())
+    for gene_index in range(0, number_genes):
+        positions = [0]*number_nonterminals
+        # Find which nonterminals are present
+        present_indices = []
+        for i, nonterminal in enumerate(nonterminals):
+            function = sp.Function(nonterminal.capitalize())
+            positions[i] = find_position_gene(t, function, gene_index)
+            if positions[i]:
+                present_indices.append(i)
+        if any(present_indices):
+            nonterminal_choice = t.rng.choice(present_indices)
+            point = select_operator_point(t, positions[nonterminal_choice])
+            grammar = copy.copy(t.grammar)
+            grammar.start = str(t.grammar.nonterminals[nonterminal_choice])
+            subtree = GrammarTree(grammar, max_depth)
+            t.replace(point, subtree.get_tree())
+    return t
 
 
 t3 = crossover(t1, t2)
-# t4 = mutation(t1, max_depth)
+t4 = mutation(t1, max_depth)
 print(str(t3))
 print(str(t4))
-
-# BUG: growing the tree from a single one starting nonterminal causes the
-# template to fail...
-

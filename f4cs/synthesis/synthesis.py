@@ -11,7 +11,6 @@ class Synthesis:
 
     def __init__(self, options={}):
         self.issolution = False
-        self.mode = options.get('mode', 'template-based')
         self.max_iterations = options.get('max_iterations', 10)
         self.iteration = None
         self.synthesis_time = None

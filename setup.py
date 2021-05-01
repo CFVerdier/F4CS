@@ -21,6 +21,7 @@ setup(
         'cma',
         'z3-solver',
         'pyibex',
+        'joblib >= 1.0.1',
         'docker ; platform_system=="Windows"'
     ],
     python_requires=">=3.7"

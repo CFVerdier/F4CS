@@ -4,3 +4,4 @@ cma
 z3-solver
 pyibex
 docker
+joblib >= 1.0.1

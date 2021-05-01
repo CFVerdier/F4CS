@@ -61,6 +61,7 @@ class Solution:
         self.dV_sym = None
         self.dVfun = None
 
+        # TODO: rename to fitness_function
         self.fitness = None
 
         # Create the conditions dependent on the specification

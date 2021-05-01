@@ -10,6 +10,7 @@ from f4cs.synthesis.synthesis import Synthesis
 from f4cs.candidates import Solution
 from joblib import Parallel, delayed
 import sympy as sp
+import numpy as np
 import copy
 import cma
 import time
@@ -25,21 +26,70 @@ class GrammarGuidedGeneticProgramming(Synthesis):
         self.number_individuals = options.get('number_individuals', 6)
         self.max_depth = options.get('max_depth', 2)
 
+        self.tournament_size = options.get('tournament_size',
+                                           int(np.min(
+                                               [2, np.floor(
+                                                   self.number_individuals*0.2
+                                               )])))
+        self.cores = options.get('cpu_cores', -2)  # default is all but 1
+
         self.number_genes = len(self.grammar.start)
         self.population = [GrammarTree(self.grammar, self.max_depth)
                            for _ in range(0, self.number_individuals)]
         self.sample_fitness = [0]*self.number_individuals
+        self.SMT_fitness = [0]*self.number_individuals
         self.candidates = [0]*self.number_individuals
+
+        self.best = None
+        self.best_fitness = None
+
+        self.rng = np.random.default_rng()  # Initialize random generator
 
     def select_operator_point(self, tree, positions):
         """Find a node to apply a genetic operator on."""
-        index = tree.rng.integers(0, len(positions))
+        index = self.rng.integers(0, len(positions))
         return positions[index]
+
+    def find_indices(self, a_list, element):
+        """Given a list and an element, find the positions."""
+        return [i for i, e in enumerate(a_list) if e == element]
 
     def find_position_gene(self, tree, function, gene_int):
         """find the positions of a function on a certain gene"""
         positions = tree.get_position(function)
         return list(filter(lambda x: x[0] == gene_int, positions))
+
+    def tournament_selection(self):
+        """Tournament selection"""
+        selected_indices = self.rng.integers(0, high=self.number_individuals,
+                                             size=self.tournament_size)
+        selected = [self.population[i] for i in selected_indices]
+        fitness_selected = [self.full_fitness[i] for i in selected_indices]
+        best = selected[fitness_selected.index(max(fitness_selected))]
+        return best
+
+    def create_new_individual(self):
+        """Create a new individual, based on selection and genetic operators.
+
+        """
+        tree_1 = self.tournament_selection()
+        tree_2 = self.tournament_selection()
+        new_tree = self.crossover(tree_1, tree_2)
+        new_tree = self.mutation(new_tree, self.max_depth)
+        return new_tree
+
+    def create_new_population(self):
+        """Create new population, based on elitism, selection, and genetic
+        operators.
+
+        """
+        # Eliteism
+        new_population = [0]*self.number_individuals
+        new_population[0] = self.best
+        # Creating a new population
+        for i in range(1, self.number_individuals):
+            new_population[i] = self.create_new_individual()
+        self.population = new_population
 
     # TODO: use a mution/crossover rate PER gene.
     def crossover(self, tree_1, tree_2):
@@ -63,7 +113,7 @@ class GrammarGuidedGeneticProgramming(Synthesis):
                 if all([positions_1[i], positions_2[i]]):
                     overlap_indices.append(i)
             if any(overlap_indices):
-                nonterminal_choice = t1.rng.choice(overlap_indices)
+                nonterminal_choice = self.rng.choice(overlap_indices)
                 point_1 = self.select_operator_point(
                     t1, positions_1[nonterminal_choice])
                 point_2 = self.select_operator_point(
@@ -87,7 +137,7 @@ class GrammarGuidedGeneticProgramming(Synthesis):
                 if positions[i]:
                     present_indices.append(i)
             if any(present_indices):
-                nonterminal_choice = t.rng.choice(present_indices)
+                nonterminal_choice = self.rng.choice(present_indices)
                 point = self.select_operator_point(
                     t, positions[nonterminal_choice])
                 grammar = copy.copy(self.grammar)
@@ -108,102 +158,63 @@ class GrammarGuidedGeneticProgramming(Synthesis):
         """Synthesize controller."""
         # Create a candidate object based on the template.
         self.issolution = False
+        self.iteration = 0
+        t_start = time.time()
 
-        result = Parallel(n_jobs=6)(delayed(self.optimize_parameters)
-                                    (individual.create_template(), spec)
-                                    for individual in self.population)
-        self.candidates = [res[0] for res in result]
-        # Subsitute best parameters back
-        [individual.substitute_values(result[i][1]) for i, individual in
-         enumerate(self.population)]
+        while ((self.issolution is False) and
+                (self.iteration < self.max_iterations)):
 
-        self.sample_fitness = [res[2] for res in result]
+            self.iteration += 1
+            # optimize parameters
+            result = Parallel(n_jobs=self.cores)(
+                delayed(self.optimize_parameters)
+                (individual.create_template(), spec)
+                for individual in self.population)
+            self.candidates = [res[0] for res in result]
+            # Subsitute best parameters back
+            [individual.substitute_values(result[i][1]) for i, individual in
+             enumerate(self.population)]
 
-        # for i, individual in enumerate(self.population):
-        #     candidate = Solution(spec, individual.create_template())
-        #     # Optimize using CMAES
-        #     res = cma.fmin(spec.parameter_fitness, candidate.par,
-        # self.sigma0,
-        #                    args={candidate, }, options={'verbose': -1})
-        #     optimal_values = res[0]
-        #     self.sample_fitness[i] = res[1]
-        #     self.candidates[i] = candidate
-        #     # Subsitute best parameters back
-        #     individual.substitute_values(optimal_values)
+            self.sample_fitness = [-res[2] for res in result]
 
-        # Keep iterating until a maximum of iterations is met, or a solution
-        # # is found
-        # self.iteration = 0
-        # t_start = time.time()
-        # while self.issolution is False and \
-        #         (self.iteration < self.max_iterations):
-        #     self.iteration += 1
-        #     # Optimize parameters
-        #     cma.fmin(spec.parameter_fitness, candidate.par, self.sigma0,
-        #              args={candidate, }, options={'verbose': -1})
-        #     # Verify candidate solution
-        #     spec.verify(candidate)
-        #     verification_booleans = [result['sat']
-        #                              for result in spec.verification_result]
-        #     self.issolution = all(verification_booleans)
+            # Verify candidate solution (only those with a maximum samp. fit)
+            to_verify = self.find_indices(self.sample_fitness, 1.0)
+            self.smt_fitness = [0]*self.number_individuals
+            for i in to_verify:
+                self.smt_fitness[i] = spec.SMT_fitness(self.candidates[i])
 
-        # self.synthesis_time = time.time()-t_start
-        # if self.issolution is True:
-        #     print('Solution found in {}'.format(self.iteration)
-        #           + ' iterations')
-        #     print('Synthesis time: {}'.format(self.synthesis_time)
-        #           + ' seconds')
-        # else:
-        #     print('No solution found in {}'.format(self.iteration)
-        #           + ' iterations')
-        #     print('Synthesis time: {}'.format(self.synthesis_time)
-        #           + ' seconds')
-        # # Update log of synthesis times and iterations
-        # self.iterations.append(self.iteration)
-        # self.synthesis_times.append(self.synthesis_time)
+            self.full_fitness = list(
+                np.add(self.sample_fitness, self.smt_fitness))
 
-        return self.population
+            best_index = self.full_fitness.index(max(self.full_fitness))
+            self.best_fitness = self.full_fitness[best_index]
+            self.best = self.population[best_index]
 
+            print('Best fitness: ' + str(self.best_fitness))
 
-# # Demo on grammar useage #
-# # Production rules
-# P = {'pol': ('pol+pol', 'const*mon'),
-#      'mon': ('mon*mon', 'vars'),
-#      'vars': ('x1', 'x2')
-#      }
-# P_terminal = {'pol': ('const*mon',),
-#               'mon': ('vars',),
-#               'vars': ('x1', 'x2')
-#               }
-# # Special production rules for constants
-# P_constants = {'const': ('Real(-1,1)',)}
+            # Check if there is a solution
+            if (self.best_fitness == 2):
+                self.issolution = True
+                break
 
-# start = ('pol+const', 'mon')
-# grammar = Grammar(start, P, P_terminal, P_constants)
-# max_depth = 3
-# number_individuals = 6
-# t1 = GrammarTree(grammar, max_depth)
-# t2 = GrammarTree(grammar, max_depth)
+            # Create new population based on genetic operators.
+            self.create_new_population()
 
-# print(str(t1))
-# print(str(t2))
+        # After loop, check if the synthesis was succesfull
+        self.synthesis_time = time.time()-t_start
+        if self.issolution is True:
+            print('Solution found in {}'.format(self.iteration)
+                  + ' iterations')
+            print('Synthesis time: {}'.format(self.synthesis_time)
+                  + ' seconds')
+        else:
+            print('No solution found in {}'.format(self.iteration)
+                  + ' iterations')
+            print('Synthesis time: {}'.format(self.synthesis_time)
+                  + ' seconds')
 
-# # Create a template that can be used in the Solution class.
-# template_t1 = t1.create_template()
-# # Update parameters (e.g. through optimization)
-# template_t1['values'][0] = 10
-# # Substitute back into tree
-# t1.substitute_values(template_t1['values'])
+        # Update log of synthesis times and iterations
+        self.iterations.append(self.iteration)
+        self.synthesis_times.append(self.synthesis_time)
 
-# print(str(t1))
-
-# # Demo for GGGP/genetic operators
-# options = {'grammar': grammar,
-#            'max_depth': max_depth,
-#            'number_individuals': number_individuals}
-# gggp = GrammarGuidedGeneticProgramming(options)
-
-# t3 = gggp.crossover(t1, t2)
-# t4 = gggp.mutation(t1, max_depth)
-# print(str(t3))
-# print(str(t4))
+        return self.best

@@ -65,7 +65,7 @@ synthesiser = TBS(options)
 # solution = synthesiser.synthesis(spec, template)
 
 # Repeated test
-number_runs = 1
+number_runs = 10
 for i in range(number_runs):
     # Synthesize a solution.
     solution = synthesiser.synthesis(spec, template)

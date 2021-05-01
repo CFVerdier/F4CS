@@ -34,12 +34,12 @@ P_terminal = {'pol': ('const*mon',),
               }
 # Special production rules for constants
 P_constants = {'const': ('Real(-1,1)',)}
-# start = ('pol+const', sp.Matrix(['pol' for _ in range(0, len(input_list))]))
-start = ('const*x1**2 + const*x2**2 + const*x1*x1 +const',
-         sp.Matrix(['pol' for _ in range(0, len(input_list))]))
+start = ('pol+const', sp.Matrix(['pol' for _ in range(0, len(input_list))]))
+# start = ('const*x1**2 + const*x2**2 + const*x1*x2 +const',
+#          sp.Matrix(['const*x1+const*x2', 'const*x1+const*x2']))
 grammar = Grammar(start, P, P_terminal, P_constants)
 max_depth = 5
-number_individuals = 6
+number_individuals = 14
 
 # Use Z3
 smt_options = {'solver': 'Z3'}
@@ -67,13 +67,10 @@ options = {'variables': var_list,  # tuple of symbolic variables
 spec = RWS(options)
 # Initialize an template-based synthesis procedure.
 synthesiser = GGGP(options)
-print(synthesiser.population[0])
 # Synthesize a solution.
 solution = synthesiser.synthesis(spec)
-print('optimized')
-print(synthesiser.population[0])
 print('fitness')
-print(synthesiser.sample_fitness)
+
 
 # # Repeated test
 # number_runs = 1

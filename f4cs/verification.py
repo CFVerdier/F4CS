@@ -67,6 +67,8 @@ class Verification:
             # for rational we must convert to numerical value
             if name == "Rational" or name == "Half":
                 expr = float(expr)
+            # Avoid scientific notation:
+            expr = np.format_float_positional(expr)
             sform = str(expr)
         elif name in self.sym_dict_exceptions:
             sform = "(" + self.symbolic_name_to_lisp(name)

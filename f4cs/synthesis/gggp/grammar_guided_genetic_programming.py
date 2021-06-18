@@ -31,6 +31,11 @@ class GrammarGuidedGeneticProgramming(Synthesis):
                                                [2, np.floor(
                                                    self.number_individuals*0.2
                                                )])))
+        crossover_rate = options.get('crossover_rate', 0.8)
+        mutation_rate = options.get('mutation_rate', 0.3)
+        # Genetic operator rates
+        self.operator_rates = {'crossover': crossover_rate,
+                               'mutation': mutation_rate}
         self.cores = options.get('cpu_cores', -2)  # default is all but 1
 
         self.number_genes = len(self.grammar.start)
@@ -44,6 +49,7 @@ class GrammarGuidedGeneticProgramming(Synthesis):
         self.best_fitness = None
 
         self.rng = np.random.default_rng()  # Initialize random generator
+        self.log = {'best_fitness': [], 'average_fitness': []}
 
     def select_operator_point(self, tree, positions):
         """Find a node to apply a genetic operator on."""
@@ -72,10 +78,16 @@ class GrammarGuidedGeneticProgramming(Synthesis):
         """Create a new individual, based on selection and genetic operators.
 
         """
+        operator_probabilities = self.rng.random(2)
         tree_1 = self.tournament_selection()
         tree_2 = self.tournament_selection()
-        new_tree = self.crossover(tree_1, tree_2)
-        new_tree = self.mutation(new_tree, self.max_depth)
+        new_tree = tree_1
+        # Apply crossover
+        if operator_probabilities[0] <= self.operator_rates['crossover']:
+            new_tree = self.crossover(tree_1, tree_2)
+        # Apply mutation
+        if operator_probabilities[1] <= self.operator_rates['mutation']:
+            new_tree = self.mutation(new_tree, self.max_depth)
         return new_tree
 
     def create_new_population(self):
@@ -150,8 +162,13 @@ class GrammarGuidedGeneticProgramming(Synthesis):
         """Optimize parameters based on CMAES."""
         candidate = Solution(spec, template)
         # Optimize using CMAES
-        res = cma.fmin(spec.parameter_fitness, candidate.par, self.sigma0,
-                       args={candidate, }, options={'verbose': -9})
+        res = cma.fmin(spec.parameter_fitness,
+                       candidate.par,
+                       self.sigma0,
+                       args={candidate, },
+                       options={'verbose': -9,
+                                'ftarget': -1,
+                                'maxiter': 1000})
         return [candidate, res[0], res[1]]
 
     def synthesis(self, spec):
@@ -189,6 +206,10 @@ class GrammarGuidedGeneticProgramming(Synthesis):
             best_index = self.full_fitness.index(max(self.full_fitness))
             self.best_fitness = self.full_fitness[best_index]
             self.best = self.population[best_index]
+
+            # Log results
+            self.log['best_fitness'].append(self.best_fitness)
+            self.log['average_fitness'].append(np.mean(self.full_fitness))
 
             print('Best fitness: ' + str(self.best_fitness))
 

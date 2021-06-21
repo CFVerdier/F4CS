@@ -55,7 +55,7 @@ class Solution:
             'controller', sp.zeros(len(self.spec.input), 1))
         self.V_sym = template.get('certificate', 0)
 
-        self.dV_sym = sp.diff(self.V_sym, [self.spec.var])
+        self.dV_sym = sp.Matrix([self.V_sym]).jacobian(self.spec.var)
         self.dtV_sym = sp.Matrix(self.dV_sym).dot(
             self.spec.system).subs(zip(self.spec.input, self.k_sym))
         self.dV_sym = None

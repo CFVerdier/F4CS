@@ -18,7 +18,7 @@ def call_dReal(verifier):
     client = docker.from_env()
     volume_dict = {path: {'bind': '/data', 'mode': 'ro'}}
     container = client.containers.run("dreal/dreal4",
-                                      " dreal data/" + file + " --model",
+                                      " dreal /data/" + file + " --model",
                                       volumes=volume_dict,
                                       detach=True)
     if verifier.t_max is not None:

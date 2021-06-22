@@ -34,7 +34,7 @@ Unfortunately, dReal is built for Linux/Mac. Luckily, dReal is provided as docke
     docker run --rm dreal/dreal4 dreal -h  # Run "dreal -h" 
     ```
     If this displays the help of dReal: great, it is working.
-* Create a folder that will be shared with docker: here the SMT files will be written/stored. E.g. the folder that will be shared has the path `D:/docker$\_$connect'.
+* Create a folder that will be shared with docker: here the SMT files will be written/stored. E.g. the folder that will be shared has the path `D:/docker_connect'.
 * Note: When relying on dReal and running on Windows, make sure Docker is running when performing the synthesis. 
 
 # Examples

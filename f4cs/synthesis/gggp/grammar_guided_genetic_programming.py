@@ -23,7 +23,7 @@ class GrammarGuidedGeneticProgramming(Synthesis):
         Synthesis.__init__(self, options)
         self.sigma0 = options.get('sigma_0', 0.5)
         self.grammar = options['grammar']
-        self.number_individuals = options.get('number_individuals', 6)
+        self.number_individuals = options.get('number_individuals', 12)
         self.max_depth = options.get('max_depth', 2)
 
         self.tournament_size = options.get('tournament_size',
@@ -49,7 +49,8 @@ class GrammarGuidedGeneticProgramming(Synthesis):
         self.best_fitness = None
 
         self.rng = np.random.default_rng()  # Initialize random generator
-        self.log = {'best_fitness': [], 'average_fitness': []}
+        self.log = {'best_fitness': [],
+                    'average_fitness': []}
 
     def select_operator_point(self, tree, positions):
         """Find a node to apply a genetic operator on."""
@@ -168,7 +169,9 @@ class GrammarGuidedGeneticProgramming(Synthesis):
                        args={candidate, },
                        options={'verbose': -9,
                                 'ftarget': -1,
-                                'maxiter': 1000})
+                                # 'maxiter': 30,
+                                'CMA_diagonal': True,
+                                'timeout': 1})
         return [candidate, res[0], res[1]]
 
     def synthesis(self, spec):
@@ -176,24 +179,26 @@ class GrammarGuidedGeneticProgramming(Synthesis):
         # Create a candidate object based on the template.
         self.issolution = False
         self.iteration = 0
-        t_start = time.time()
+        t_start = time.perf_counter()
 
         while ((self.issolution is False) and
                 (self.iteration < self.max_iterations)):
 
             self.iteration += 1
             # optimize parameters
-            result = Parallel(n_jobs=self.cores)(
+            t_start_optimization = time.perf_counter()
+            result = Parallel(n_jobs=self.cores, prefer="threads")(
                 delayed(self.optimize_parameters)
                 (individual.create_template(), spec)
                 for individual in self.population)
-            self.candidates = [res[0] for res in result]
+            self.sample_fitness = [-res[2] for res in result]
             # Subsitute best parameters back
             [individual.substitute_values(result[i][1]) for i, individual in
              enumerate(self.population)]
-
-            self.sample_fitness = [-res[2] for res in result]
-
+            t_end_optimization = time.perf_counter()-t_start_optimization
+            print('Parameters optimized in: ' + str(t_end_optimization) + ' s')
+            
+            t_start_verify = time.perf_counter()
             # Verify candidate solution (only those with a maximum samp. fit)
             to_verify = self.find_indices(self.sample_fitness, 1.0)
             self.smt_fitness = [0]*self.number_individuals
@@ -202,6 +207,8 @@ class GrammarGuidedGeneticProgramming(Synthesis):
 
             self.full_fitness = list(
                 np.add(self.sample_fitness, self.smt_fitness))
+            t_end_verify = time.perf_counter()-t_start_verify
+            print('Verified in: ' + str(t_end_verify) + ' s')
 
             best_index = self.full_fitness.index(max(self.full_fitness))
             self.best_fitness = self.full_fitness[best_index]
@@ -219,10 +226,14 @@ class GrammarGuidedGeneticProgramming(Synthesis):
                 break
 
             # Create new population based on genetic operators.
+            t_start_creation = time.perf_counter()
             self.create_new_population()
+            t_end_creation = time.perf_counter()-t_start_creation
+            print('New population created in: ' +
+                  str(t_end_creation) + ' s')
 
         # After loop, check if the synthesis was succesfull
-        self.synthesis_time = time.time()-t_start
+        self.synthesis_time = time.perf_counter()-t_start
         if self.issolution is True:
             print('Solution found in {}'.format(self.iteration)
                   + ' iterations')

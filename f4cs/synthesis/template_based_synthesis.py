@@ -27,7 +27,7 @@ class TemplateBasedSynthesis(Synthesis):
         # Keep iterating until a maximum of iterations is met, or a solution
         # is found
         self.iteration = 0
-        t_start = time.time()
+        t_start = time.perf_counter()
         while self.issolution is False and \
                 (self.iteration < self.max_iterations):
             self.iteration += 1
@@ -42,7 +42,7 @@ class TemplateBasedSynthesis(Synthesis):
                                      for result in spec.verification_result]
             self.issolution = all(verification_booleans)
 
-        self.synthesis_time = time.time()-t_start
+        self.synthesis_time = time.perf_counter()-t_start
         if self.issolution is True:
             print('Solution found in {}'.format(self.iteration)
                   + ' iterations')

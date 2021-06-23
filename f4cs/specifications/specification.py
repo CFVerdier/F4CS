@@ -160,7 +160,7 @@ class Specification:
         """Compute the sample-based fitness."""
         par = solution.par
 
-        fit_data = [solution.fitness[i](*par, *self._data_sets[i].T)
+        fit_data = [solution.fitness_function[i](*par, *self._data_sets[i].T)
                     for i in range(self._number_conditions)]
 
         norm_fit_data = np.array(
